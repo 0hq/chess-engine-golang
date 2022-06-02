@@ -25,23 +25,24 @@ const flag int = 4
 
 const DO_MOVE_ORDERING bool = true
 
-var DO_ITERATIVE_DEEPENING bool = false
+var DO_ITERATIVE_DEEPENING bool = true
 var TIME_TO_THINK int = 2
 var DEPTH int = 2 // default value without iterative deepening
 var MAX_MOVES = 10000
 var MAX_QUIESCENCE = -10
 
+const mem_size int = 20
 var explored int = 0
 var hash_count int = 0
 var hash_count_list = [3]int{0, 0, 0}
-var explored_depth [50]int
+var explored_depth [mem_size]int
 var position_eval = 0
-var move_count = 0
+var move_count = 1
 var engine_color = chess.Black
 
 // rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 // rn1r2k1/ppp3pp/8/2b2b2/4P2q/2P1P3/PP1KQ1BP/RN4NR w - - 0 3
-var start_pos = "1r1r2k1/p4ppp/1bB2q2/5b2/Q7/2P1PN1P/PP3PP1/2KRR3 w - - 0 1"
+var start_pos = "1r1r2k1/p4ppp/1bB2q2/5b2/Q7/2P1PN1P/PP3PP1/2KRR3 b - - 0 1"
 
 func main() {
 	game := setup()
@@ -61,7 +62,7 @@ func main() {
 		color := game.Position().Turn()
 		start := time.Now()
 
-		fmt.Println("\n\n---- New Turn ----", color)
+		fmt.Println("\n\n", move_count, "---- New Turn ----", color)
 
 		if color == engine_color {
 			move = engine(game)
@@ -107,7 +108,7 @@ func iterative_deepening(game *chess.Game, time_control int) (output *chess.Move
 
 	var total_hash, total_explored int
 	var total_hash_list [3]int
-	var total_explored_list [50]int
+	var total_explored_list [mem_size]int
 
 	for time.Now().Sub(delay) < 0 {
 		print_iter_1(delay)
@@ -128,15 +129,16 @@ func update_evaluation(game *chess.Game, pre *chess.Game, move *chess.Move) {
 // ----- print statements to clean up code ----
 
 func print_iter_1(delay time.Time) {
-	fmt.Println("new interation with depth: ", DEPTH, "time left:", delay.Sub(time.Now()))
+	fmt.Println("\n -- Searching deeper --")
+	fmt.Println("Depth:", DEPTH)
+	fmt.Println("Time left:", delay.Sub(time.Now()), "\n")
 }
 
 func print_iter_2(output *chess.Move, eval int) {
-	fmt.Println("\n", "done", output, eval, "\n")
-	fmt.Println(hash_count)
-	fmt.Println(hash_count_list)
-	fmt.Println(explored)
-	fmt.Println(explored_depth)
+	fmt.Println("\nTotal nodes explored", explored)
+	fmt.Println("# nodes at depth", explored_depth)
+	fmt.Println("Total hashes used", hash_count)
+	fmt.Println("Hash types (edge, alpha, beta)", hash_count_list)
 }
 
 func print_turn_complete(game *chess.Game, move *chess.Move, start time.Time) {
@@ -148,9 +150,9 @@ func print_turn_complete(game *chess.Game, move *chess.Move, start time.Time) {
 }
 
 func print_game_over(game *chess.Game) {
-	fmt.Printf("\n\n ----- Game completed. %s by %s.\n ------", game.Outcome(), game.Method())
+	fmt.Printf("\n\n ----- Game completed. %s by %s. ------\n\n", game.Outcome(), game.Method())
 	fmt.Println(game)
-	fmt.Println(game.Position())
+	fmt.Println("\n", game.Position())
 }
 
 // ------ now entering the doldrums -----
@@ -180,7 +182,7 @@ func init_hash_count() {
 	}
 }
 
-func deepening_counts(total_hash *int, total_explored *int, total_hash_list *[3]int, total_explored_list *[50]int) {
+func deepening_counts(total_hash *int, total_explored *int, total_hash_list *[3]int, total_explored_list *[mem_size]int) {
 	*total_hash += hash_count
 	*total_explored += explored
 	total_hash_list[0] += hash_count_list[0]

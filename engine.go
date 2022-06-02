@@ -8,6 +8,115 @@ import (
 	"github.com/notnil/chess"
 )
 
+func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool, preval int) (best *chess.Move, eval int, history []*chess.Move) {
+
+	if depth < MAX_QUIESCENCE {
+		write_hash(zobrist(game.Position().Board(), max), depth, "EDGE", preval, nil, nil, game.Position())
+		return nil, preval, history // history is blank
+	}
+
+	var moves []*chess.Move
+	flag, hashscore, hashbest, hashmoves := read_hash(zobrist(game.Position().Board(), max), depth, alpha, beta)
+
+	if flag == 1 {
+		history = append(append(make([]*chess.Move, 1), hashbest), history...)
+		return hashbest, hashscore, history
+	} else if flag == 2 {
+		moves = hashmoves
+	} else {
+		moves = game.ValidMoves()
+	}
+
+	explored++
+	explored_depth[DEPTH-depth]++
+
+	// makes sure we don't run quiescence move pruning on empty
+	if len(moves) == 0 {
+		write_hash(zobrist(game.Position().Board(), max), depth, "EDGE", preval, nil, nil, game.Position())
+		return nil, preval, history // history is blank here
+	}
+
+	if depth <= 0 {
+		return quiescence_hashing(game, depth, alpha, beta, max, preval, moves)
+	}
+
+	root := depth == DEPTH
+	if flag == 2 {
+		moves = move_order_hashing(game, moves, hashbest)
+	} else {
+		moves = move_order(game, moves)
+	}
+
+	if root {
+		fmt.Println("MOVE ORDER:", moves)
+		fmt.Println("HASH RETURN:", hashbest, hashmoves, flag, hashscore)
+	}
+
+	if max {
+		eval = -1 * math.MaxInt
+		for _, move := range moves {
+			post := game.Clone()
+			post.Move(move)
+			state_eval := evaluate_position(game, post, preval, move)
+			_, tempeval, temphistory := minimax_hashing(post, depth-1, alpha, beta, !max, state_eval)
+			if tempeval > eval {
+				eval = tempeval
+				best = move
+				history = append(temphistory, move)
+			}
+			if tempeval > alpha {
+				alpha = tempeval
+			}
+			if alpha >= beta {
+				break
+			}
+		}
+	} else {
+		eval = math.MaxInt
+		for _, move := range moves {
+			post := game.Clone()
+			post.Move(move)
+			state_eval := evaluate_position(game, post, preval, move)
+			_, tempeval, temphistory := minimax_hashing(post, depth-1, alpha, beta, !max, state_eval)
+			if tempeval < eval {
+				eval = tempeval
+				best = move
+				history = append(temphistory, move)
+				if root {
+					print_root_move_1(move, tempeval, beta, history)
+				}
+			} else {
+				if root {
+					fmt.Print("x")
+				}
+			}
+			if tempeval < beta {
+				beta = tempeval
+			}
+			if alpha >= beta {
+				break
+			}
+			
+		}
+	}
+	if root {
+		fmt.Print("\n")
+	}
+
+	if max {
+		write_hash(zobrist(game.Position().Board(), max), depth, "ALPHA", alpha, best, moves, game.Position())
+	} else {
+		write_hash(zobrist(game.Position().Board(), max), depth, "BETA", beta, best, moves, game.Position())
+	}
+	return
+}
+
+func print_root_move_1(move *chess.Move, tempeval int, beta int, history []*chess.Move) {
+	fmt.Println("\nNew best root move:", move, )
+	fmt.Println("Evaluation:", tempeval, "Prev eval (forced beta):", beta)
+	fmt.Println("Move path:", history)
+}
+
 func quiescence_hashing(game *chess.Game, depth int, alpha int, beta int, max bool, preval int, move_gen []*chess.Move) (best *chess.Move, eval int, history []*chess.Move) {
 	moves := get_quiescence_moves(game, move_gen)
 
@@ -59,108 +168,7 @@ func quiescence_hashing(game *chess.Game, depth int, alpha int, beta int, max bo
 	return
 }
 
-func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool, preval int) (best *chess.Move, eval int, history []*chess.Move) {
 
-	if depth < MAX_QUIESCENCE {
-		write_hash(zobrist(game.Position().Board(), max), depth, "EDGE", preval, nil, nil, game.Position())
-		return nil, preval, history // history is blank
-	}
-
-	var moves []*chess.Move
-	flag, hashscore, hashbest, hashmoves := read_hash(zobrist(game.Position().Board(), max), depth, alpha, beta)
-
-	if flag == 1 {
-		history = append(history, hashbest)
-		return hashbest, hashscore, history
-	} else if flag == 2 {
-		moves = hashmoves
-	} else {
-		moves = game.ValidMoves()
-	}
-
-	explored++
-	explored_depth[DEPTH-depth]++
-
-	// makes sure we don't run quiescence move pruning on empty
-	if len(moves) == 0 {
-		write_hash(zobrist(game.Position().Board(), max), depth, "EDGE", preval, nil, nil, game.Position())
-		return nil, preval, history // history is blank here
-	}
-
-	if depth <= 0 {
-		return quiescence_hashing(game, depth, alpha, beta, max, preval, moves)
-	}
-
-	root := depth == DEPTH
-	if flag == 2 {
-		moves = move_order_hashing(game, moves, hashbest)
-	} else {
-		moves = move_order(game, moves)
-	}
-
-	if root {
-		fmt.Println("MOVE ORDER:")
-		fmt.Println("HASH RETURN:", hashbest, hashmoves, flag, hashscore)
-	}
-
-	if max {
-		eval = -1 * math.MaxInt
-		for _, move := range moves {
-			post := game.Clone()
-			post.Move(move)
-			state_eval := evaluate_position(game, post, preval, move)
-			_, tempeval, temphistory := minimax_hashing(post, depth-1, alpha, beta, !max, state_eval)
-			if tempeval > eval {
-				eval = tempeval
-				best = move
-				history = append(temphistory, move)
-			}
-			if tempeval > alpha {
-				alpha = tempeval
-			}
-			if alpha >= beta {
-				break
-			}
-		}
-	} else {
-		eval = math.MaxInt
-		for _, move := range moves {
-			post := game.Clone()
-			post.Move(move)
-			state_eval := evaluate_position(game, post, preval, move)
-			_, tempeval, temphistory := minimax_hashing(post, depth-1, alpha, beta, !max, state_eval)
-			if tempeval < eval {
-				eval = tempeval
-				best = move
-				history = append(temphistory, move)
-				if root {
-					fmt.Println()
-					fmt.Println(move, tempeval, beta)
-					fmt.Println(history)
-				}
-			}
-			if tempeval < beta {
-				beta = tempeval
-			}
-			if alpha >= beta {
-				break
-			}
-			if root {
-				fmt.Print("x")
-			}
-		}
-	}
-	if root {
-		fmt.Print("x")
-	}
-
-	if max {
-		write_hash(zobrist(game.Position().Board(), max), depth, "ALPHA", alpha, best, moves, game.Position())
-	} else {
-		write_hash(zobrist(game.Position().Board(), max), depth, "BETA", beta, best, moves, game.Position())
-	}
-	return
-}
 
 func evaluate_position(pre *chess.Game, post *chess.Game, preval int, move *chess.Move) (eval int) {
 
