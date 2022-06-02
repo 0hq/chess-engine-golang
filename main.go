@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/notnil/chess"
+	"github.com/notnil/chess/uci"
 )
 
 /*
@@ -40,12 +41,21 @@ var engine_color = chess.Black
 
 // rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 // rn1r2k1/ppp3pp/8/2b2b2/4P2q/2P1P3/PP1KQ1BP/RN4NR w - - 0 3
-var start_pos = "1r1r2k1/p4ppp/1bB2q2/5b2/Q7/2P1PN1P/PP3PP1/2KRR3 b - - 0 1"
+var start_pos = "1r1r2k1/p4ppp/1bB2q2/5b2/Q7/2P1PN1P/PP3PP1/2KRR3 w - - 0 1"
 
 func main() {
 	game := setup()
-	eng := init_stockfish()
 
+	// initialize stockfish
+	eng, err := uci.New("stockfish")
+	if err != nil {
+		panic(err)
+	}
+	defer eng.Close()
+	if err := eng.Run(uci.CmdUCI, uci.CmdIsReady, uci.CmdUCINewGame); err != nil {
+		panic(err)
+	}
+	
 	for game.Outcome() == chess.NoOutcome && move_count < MAX_MOVES {
 		var move *chess.Move
 		color := game.Position().Turn()

@@ -7,18 +7,18 @@ import (
 	"github.com/notnil/chess/uci"
 )
 
-func init_stockfish() *uci.Engine {
-	eng, err := uci.New("stockfish")
-	if err != nil {
-		panic(err)
-	}
-	defer eng.Close()
-	// initialize uci with new game
-	if err := eng.Run(uci.CmdUCI, uci.CmdIsReady, uci.CmdUCINewGame); err != nil {
-		panic(err)
-	}
-	return eng
-}
+// func init_stockfish() *uci.Engine {
+// 	eng, err := uci.New("stockfish")
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	defer eng.Close()
+// 	// initialize uci with new game
+// 	if err := eng.Run(uci.CmdUCI, uci.CmdIsReady, uci.CmdUCINewGame); err != nil {
+// 		panic(err)
+// 	}
+// 	return eng
+// }
 
 func stockfish(game *chess.Game, eng *uci.Engine) *chess.Move {
 	cmdPos := uci.CmdPosition{Position: game.Position()}
