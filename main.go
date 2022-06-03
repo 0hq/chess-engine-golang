@@ -29,11 +29,11 @@ const TIME_TO_THINK int = 20
 const MAX_MOVES = 3
 const MAX_QUIESCENCE = -100
 const VERBOSE_PRINT = true
-var DEPTH int = 3 // default value without iterative deepening
+
+var DEPTH int = 3       // default value without iterative deepening
 const mem_size int = 20 // limits max depth
 // const MAX_DEPTH int = mem_size
 const MAX_DEPTH int = (mem_size - 1)
-
 
 var explored int = 0
 var hash_count int = 0
@@ -64,7 +64,7 @@ func main() {
 	if err := eng.Run(uci.CmdUCI, uci.CmdIsReady, uci.CmdUCINewGame); err != nil {
 		panic(err)
 	}
-	
+
 	for game.Outcome() == chess.NoOutcome && move_count < MAX_MOVES {
 		var move *chess.Move
 		color := game.Position().Turn()
@@ -128,7 +128,7 @@ func iterative_deepening(game *chess.Game, time_control int) (output *chess.Move
 		output, _ = minimax_factory(game, 0)
 		print_iter_2()
 		deepening_counts(&total_hash, &total_explored, &total_hash_list, &total_explored_list)
-		DEPTH++	
+		DEPTH++
 	}
 	return
 }
@@ -141,7 +141,7 @@ func update_evaluation(game *chess.Game, pre *chess.Game, move *chess.Move) {
 // ----- print statements to clean up code ----
 
 func print_root_move_1(move *chess.Move, tempeval int, cap int, history [mem_size]*chess.Move) {
-	fmt.Println("\nNew best root move:", move, )
+	fmt.Println("\nNew best root move:", move)
 	fmt.Println("Evaluation:", tempeval, "Prev eval (forced beta/alpha):", cap)
 	fmt.Println("Move path:", history)
 }
@@ -237,7 +237,7 @@ func get_pos_val(piece chess.PieceType, x int8, y int8, max bool) int {
 		}
 	} else {
 		switch piece {
-		case types[0]: 
+		case types[0]:
 			return pos_k[7-y][x] / 10 // king pos is disabled
 		case types[1]:
 			return pos_q[7-y][x]
