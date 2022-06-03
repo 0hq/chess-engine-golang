@@ -10,6 +10,9 @@ import (
 )
 
 func check_time_up() bool {
+	if !DO_ITERATIVE_DEEPENING {
+		return false
+	}
 	return delay.Sub(time.Now()) < 0
 }
 
@@ -241,7 +244,7 @@ func evaluate_position(pre *chess.Game, post *chess.Game, preval int, move *ches
 	}
 
 	if move.HasTag(chess.Check) {
-		eval += flip * 50
+		eval += flip * 20
 	}
 
 	if move.HasTag(chess.Capture) {
@@ -252,7 +255,7 @@ func evaluate_position(pre *chess.Game, post *chess.Game, preval int, move *ches
 	move_type := pre.Position().Board().Piece(move.S1()).Type()
 	from := get_pos_val(move_type, int8(move.S1().File()), int8(move.S1().Rank()), max)
 	to := get_pos_val(move_type, int8(move.S2().File()), int8(move.S2().Rank()), max)
-	eval += flip * (to - from)
+	eval += flip * (to - from) / 10
 
 	return eval
 }
@@ -359,7 +362,7 @@ func evaluate_move(game *chess.Game, move *chess.Move) (eval int) {
 
 	from := get_pos_val(move_type, int8(move.S1().File()), int8(move.S1().Rank()), max)
 	to := get_pos_val(move_type, int8(move.S2().File()), int8(move.S2().Rank()), max)
-	eval += to - from/10
+	eval += (to - from) / 10
 
 	return
 }

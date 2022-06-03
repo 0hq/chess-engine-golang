@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math/rand"
 	"time"
 
 	"github.com/notnil/chess"
@@ -31,5 +32,5 @@ func stockfish(game *chess.Game, eng *uci.Engine) *chess.Move {
 
 func random_move_engine(game *chess.Game) *chess.Move { // about as good as stockfish ofc
 	moves := game.ValidMoves()
-	return moves[0]
+	return moves[rand.Intn(len(moves))]
 }

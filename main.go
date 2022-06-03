@@ -25,13 +25,13 @@ const flag int = 4
 
 const DO_MOVE_ORDERING bool = true
 const DO_ITERATIVE_DEEPENING bool = true
-const TIME_TO_THINK int = 3
-const MAX_MOVES = 3
+const TIME_TO_THINK int = 20
+const MAX_MOVES = 1000
 const MAX_QUIESCENCE = -100
 const VERBOSE_PRINT = true
 
 var DEPTH int = 3       // default value without iterative deepening
-const mem_size int = 20 // limits max depth
+const mem_size int = 40 // limits max depth
 // const MAX_DEPTH int = mem_size
 const MAX_DEPTH int = (mem_size - 1)
 
@@ -76,7 +76,8 @@ func main() {
 		if color == engine_color {
 			move = engine(game)
 		} else {
-			// move = random_move_engine()
+			// move = engine(game)
+			// move = random_move_engine(game)
 			move = stockfish(game, eng)
 		}
 
@@ -123,13 +124,17 @@ func iterative_deepening(game *chess.Game, time_control int) (output *chess.Move
 	var total_hash, total_explored int
 	var total_hash_list [3]int
 	var total_explored_list [mem_size]int
+	var eval int
 
 	for time.Now().Sub(delay) < 0 {
 		print_iter_1(delay)
-		output, _ = minimax_factory(game, 0)
+		output, eval = minimax_factory(game, 0)
 		print_iter_2()
 		deepening_counts(&total_hash, &total_explored, &total_hash_list, &total_explored_list)
 		DEPTH++
+		if eval >= 10000 || eval <= -10000 {
+			break
+		}
 	}
 	return
 }
