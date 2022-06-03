@@ -9,14 +9,14 @@ import (
 )
 
 func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool, preval int) (best *chess.Move, eval int, history [mem_size]*chess.Move) {
-
-	if depth < MAX_QUIESCENCE {
+	index_depth := DEPTH - depth
+	if depth < MAX_QUIESCENCE || index_depth > MAX_DEPTH {
 		write_hash(zobrist(game.Position().Board(), max), depth, "EDGE", preval, nil, nil, game.Position())
 		return nil, preval, history // history is blank
 	}
 
 	var moves []*chess.Move
-	index_depth := DEPTH - depth
+	
 	flag, hashscore, hashbest, hashmoves := read_hash(zobrist(game.Position().Board(), max), depth, alpha, beta)
 
 	if flag == 1 {
@@ -42,16 +42,23 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 		return quiescence_hashing(game, depth, alpha, beta, max, preval, moves)
 	}
 
-	root := depth == DEPTH
+	root := depth >= DEPTH - 1
 	if flag == 2 {
 		moves = move_order_hashing(game, moves, hashbest)
 	} else {
 		moves = move_order(game, moves)
 	}
 
+	if (DEPTH == depth) {
+		var temp []*chess.Move
+		temp = append(temp, moves[0])
+		moves = temp // locks to e7e6
+	}
+
 	if root {
+		fmt.Println("\nDEPTH:", index_depth)
 		fmt.Println("MOVE ORDER:", moves)
-		fmt.Println("HASH RETURN:", hashbest, hashmoves, flag, hashscore)
+		fmt.Println("HASH RETURN:", hashbest, hashmoves, flag, hashscore, "\n")
 	}
 
 	if max {
@@ -61,17 +68,23 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 			post.Move(move)
 			state_eval := evaluate_position(game, post, preval, move)
 			_, tempeval, temphistory := minimax_hashing(post, depth-1, alpha, beta, !max, state_eval)
-			if tempeval > eval {
+			if tempeval > eval  {
 				eval = tempeval
 				best = move
 				temphistory[index_depth] = move
 				history = temphistory
+				if tempeval >= 1000000 {
+					break
+				}
 			}
 			if tempeval > alpha {
 				alpha = tempeval
 			}
 			if alpha >= beta {
 				break
+			}
+			if root {
+				print_root_move_1(move, tempeval, alpha, history)
 			}
 		}
 	} else {
@@ -86,6 +99,9 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 				best = move
 				temphistory[index_depth] = move
 				history = temphistory
+				if tempeval <= 1000000 {
+					break
+				}
 				if root {
 					print_root_move_1(move, tempeval, beta, history)
 				}

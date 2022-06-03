@@ -31,6 +31,9 @@ const MAX_QUIESCENCE = -10
 const VERBOSE_PRINT = true
 var DEPTH int = 2 // default value without iterative deepening
 const mem_size int = 20 // limits max depth
+// const MAX_DEPTH int = mem_size
+const MAX_DEPTH int = mem_size
+
 
 var explored int = 0
 var hash_count int = 0
