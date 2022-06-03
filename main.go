@@ -24,19 +24,20 @@ Default Depth
 const flag int = 4
 
 const DO_MOVE_ORDERING bool = true
-const DO_ITERATIVE_DEEPENING bool = false
-const TIME_TO_THINK int = 2
-const MAX_MOVES = 10000
-const MAX_QUIESCENCE = -10
+const DO_ITERATIVE_DEEPENING bool = true
+const TIME_TO_THINK int = 20
+const MAX_MOVES = 3
+const MAX_QUIESCENCE = -100
 const VERBOSE_PRINT = true
-var DEPTH int = 2 // default value without iterative deepening
+var DEPTH int = 3 // default value without iterative deepening
 const mem_size int = 20 // limits max depth
 // const MAX_DEPTH int = mem_size
-const MAX_DEPTH int = mem_size
+const MAX_DEPTH int = (mem_size - 1)
 
 
 var explored int = 0
 var hash_count int = 0
+var hash_write_count int = 0
 var hash_count_list = [3]int{0, 0, 0}
 var explored_depth [mem_size]int
 var position_eval = 0
@@ -47,7 +48,9 @@ var engine_color = chess.Black
 // rn1r2k1/ppp3pp/8/2b2b2/4P2q/2P1P3/PP1KQ1BP/RN4NR w - - 0 3
 // 1r1r2k1/p4ppp/1bB2q2/5b2/Q7/2P1PN1P/PP3PP1/2KRR3 b - - 0 1
 // r1bqkb1r/ppp1ppp1/1Pnp4/4P3/2BP3p/2N2N1P/PP3PP1/R1BQK2R b KQkq - 0 10  // best move is e6, axb6, dxe5 (worse than other 2)
-var start_pos = "r1bq1b1r/1ppkp1p1/1p1p4/3B1Q2/1n1P3p/2N2N1P/PP3PP1/R1B1K2R b KQ - 4 16"
+// "r1bq1b1r/1ppkp1p1/1p1p4/3B1Q2/1n1P3p/2N2N1P/PP3PP1/R1B1K2R b KQ - 4 16" simple checkmate
+// r1bnkb1r/pp6/3ppNp1/4P3/2BP3p/5N1P/PP3PP1/R1BQK2R b KQkq - 0 14"
+var start_pos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 func main() {
 	game := setup()
@@ -120,7 +123,7 @@ func iterative_deepening(game *chess.Game, time_control int) (output *chess.Move
 	var total_hash_list [3]int
 	var total_explored_list [mem_size]int
 
-	for time.Now().Sub(delay) < 0 && DEPTH < 3 {
+	for time.Now().Sub(delay) < 0 {
 		print_iter_1(delay)
 		output, _ = minimax_factory(game, 0)
 		print_iter_2()
@@ -137,9 +140,9 @@ func update_evaluation(game *chess.Game, pre *chess.Game, move *chess.Move) {
 
 // ----- print statements to clean up code ----
 
-func print_root_move_1(move *chess.Move, tempeval int, beta int, history [mem_size]*chess.Move) {
+func print_root_move_1(move *chess.Move, tempeval int, cap int, history [mem_size]*chess.Move) {
 	fmt.Println("\nNew best root move:", move, )
-	fmt.Println("Evaluation:", tempeval, "Prev eval (forced beta):", beta)
+	fmt.Println("Evaluation:", tempeval, "Prev eval (forced beta/alpha):", cap)
 	fmt.Println("Move path:", history)
 }
 
@@ -153,6 +156,7 @@ func print_iter_2() {
 	fmt.Println("\nTotal nodes explored", explored)
 	fmt.Println("# nodes at depth", explored_depth)
 	fmt.Println("Total hashes used", hash_count)
+	fmt.Println("Hashes written", hash_write_count)
 	fmt.Println("Hash types (edge, alpha, beta)", hash_count_list)
 }
 

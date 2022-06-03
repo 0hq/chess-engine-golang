@@ -49,6 +49,7 @@ func zobrist(board *chess.Board, max bool) uint64 {
 }
 
 func write_hash(hash uint64, depth int, flag string, score int, best *chess.Move, moves []*chess.Move, position *chess.Position) {
+	hash_write_count++
 	p := hashed{
 		hash:     hash,
 		depth:    depth,
@@ -69,7 +70,7 @@ func read_hash(hash uint64, depth int, alpha int, beta int) (flag int, score int
 			if p.depth >= depth {
 				if p.flag == "EDGE" {
 					hash_count_list[0]++
-					return 1, p.score, p.best, p.moves
+					return 1, p.score, nil, nil
 				}
 				if p.flag == "ALPHA" && p.score > alpha {
 					hash_count_list[1]++
@@ -80,7 +81,11 @@ func read_hash(hash uint64, depth int, alpha int, beta int) (flag int, score int
 					return 1, p.score, p.best, p.moves
 				}
 			}
-			return 2, 0, p.best, p.moves
+			if p.flag == "EDGE" {
+				return 4, 0, nil, nil
+			} else {
+				return 2, 0, p.best, p.moves
+			}
 		} else {
 			fmt.Println("HASH CONFLICT", hash, p.hash, p)
 		}
