@@ -8,54 +8,63 @@ import (
 	"github.com/notnil/chess"
 )
 
+func end_at_edge(game *chess.Game, depth int, max bool, preval int) (best *chess.Move, eval int, history [mem_size]*chess.Move) {
+	write_hash(zobrist(game.Position().Board(), max), depth, "EDGE", preval, nil, nil, game.Position())
+	return nil, preval, history // history is blank
+}
+
 func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool, preval int) (best *chess.Move, eval int, history [mem_size]*chess.Move) {
 	index_depth := DEPTH - depth
-	
 	explored++
 	explored_depth[index_depth]++
-
+	
 	if depth < MAX_QUIESCENCE || index_depth >= MAX_DEPTH {
-		write_hash(zobrist(game.Position().Board(), max), depth, "EDGE", preval, nil, nil, game.Position())
-		return nil, preval, history // history is blank
+		return end_at_edge(game, depth, max, preval)
 	}
-
-	var moves []*chess.Move
 	
 	flag, hashscore, hashbest, hashmoves := read_hash(zobrist(game.Position().Board(), max), depth, alpha, beta)
 
 	if flag == 1 {
 		history[index_depth] = hashbest
 		return hashbest, hashscore, history
-	} else if flag == 2 {
+	} 
+	
+	var moves []*chess.Move
+	if flag == 2 {
 		moves = hashmoves
 	} else {
 		moves = game.ValidMoves()
 	}
 	
-
 	// makes sure we don't run quiescence move pruning on empty
 	if len(moves) == 0 {
-		write_hash(zobrist(game.Position().Board(), max), depth, "EDGE", preval, nil, nil, game.Position())
-		return nil, preval, history // history is blank here
+		return end_at_edge(game, depth, max, preval)
 	}
 
 	if depth <= 0 {
 		return quiescence_hashing(game, depth, alpha, beta, max, preval, moves)
 	}
 
-	root := depth == DEPTH
 	if flag == 2 {
 		moves = move_order_hashing(game, moves, hashbest)
 	} else {
 		moves = move_order(game, moves)
 	}
 
+	root := depth == DEPTH
 	if root {
 		fmt.Println("\nDEPTH:", index_depth)
 		fmt.Println("MOVE ORDER:", moves)
 		fmt.Println("HASH RETURN:", hashbest, hashmoves, flag, hashscore, "\n")
 	}
 
+	return minimax_hashing_core(game, depth, alpha, beta, max, preval, moves)
+}
+
+func minimax_hashing_core(game *chess.Game, depth int, alpha int, beta int, max bool, preval int, moves []*chess.Move) (best *chess.Move, eval int, history [mem_size]*chess.Move) {
+	root := depth == DEPTH
+	index_depth := DEPTH - depth
+	
 	if max {
 		eval = -1 * math.MaxInt
 		for _, move := range moves {
@@ -115,7 +124,6 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 			
 		}
 	}
-	
 
 	if max {
 		write_hash(zobrist(game.Position().Board(), max), depth, "ALPHA", alpha, best, moves, game.Position())
@@ -125,7 +133,6 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 	if root {
 		fmt.Print("\n")
 	}
-
 	return
 }
 
