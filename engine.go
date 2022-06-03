@@ -8,7 +8,7 @@ import (
 	"github.com/notnil/chess"
 )
 
-func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool, preval int) (best *chess.Move, eval int, history []*chess.Move) {
+func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool, preval int) (best *chess.Move, eval int, history [mem_size]*chess.Move) {
 
 	if depth < MAX_QUIESCENCE {
 		write_hash(zobrist(game.Position().Board(), max), depth, "EDGE", preval, nil, nil, game.Position())
@@ -16,10 +16,11 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 	}
 
 	var moves []*chess.Move
+	index_depth := DEPTH - depth
 	flag, hashscore, hashbest, hashmoves := read_hash(zobrist(game.Position().Board(), max), depth, alpha, beta)
 
 	if flag == 1 {
-		history = append(append(make([]*chess.Move, 1), hashbest), history...)
+		history[index_depth] = hashbest
 		return hashbest, hashscore, history
 	} else if flag == 2 {
 		moves = hashmoves
@@ -27,8 +28,9 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 		moves = game.ValidMoves()
 	}
 
+	
 	explored++
-	explored_depth[DEPTH-depth]++
+	explored_depth[index_depth]++
 
 	// makes sure we don't run quiescence move pruning on empty
 	if len(moves) == 0 {
@@ -62,7 +64,8 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 			if tempeval > eval {
 				eval = tempeval
 				best = move
-				history = append(temphistory, move)
+				temphistory[index_depth] = move
+				history = temphistory
 			}
 			if tempeval > alpha {
 				alpha = tempeval
@@ -81,7 +84,8 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 			if tempeval < eval {
 				eval = tempeval
 				best = move
-				history = append(temphistory, move)
+				temphistory[index_depth] = move
+				history = temphistory
 				if root {
 					print_root_move_1(move, tempeval, beta, history)
 				}
@@ -111,13 +115,8 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 	return
 }
 
-func print_root_move_1(move *chess.Move, tempeval int, beta int, history []*chess.Move) {
-	fmt.Println("\nNew best root move:", move, )
-	fmt.Println("Evaluation:", tempeval, "Prev eval (forced beta):", beta)
-	fmt.Println("Move path:", history)
-}
 
-func quiescence_hashing(game *chess.Game, depth int, alpha int, beta int, max bool, preval int, move_gen []*chess.Move) (best *chess.Move, eval int, history []*chess.Move) {
+func quiescence_hashing(game *chess.Game, depth int, alpha int, beta int, max bool, preval int, move_gen []*chess.Move) (best *chess.Move, eval int, history [mem_size]*chess.Move) {
 	moves := get_quiescence_moves(game, move_gen)
 
 	if len(moves) == 0 {
@@ -135,7 +134,8 @@ func quiescence_hashing(game *chess.Game, depth int, alpha int, beta int, max bo
 			if tempeval > eval {
 				eval = tempeval
 				best = move
-				history = append(temphistory, move)
+				temphistory[DEPTH - depth] = move
+				history = temphistory
 			}
 			if tempeval > alpha {
 				alpha = tempeval
@@ -154,7 +154,8 @@ func quiescence_hashing(game *chess.Game, depth int, alpha int, beta int, max bo
 			if tempeval < eval {
 				eval = tempeval
 				best = move
-				history = append(temphistory, move)
+				temphistory[DEPTH - depth] = move
+				history = temphistory
 			}
 			if tempeval < beta {
 				beta = tempeval
@@ -252,6 +253,12 @@ func move_order(game *chess.Game, moves []*chess.Move) []*chess.Move {
 	}
 	sort.Slice(keys, func(i, j int) bool { return evaluated[keys[i]] > evaluated[keys[j]] })
 
+	for _, key := range keys {
+		if key == nil {
+			panic("NIL MOVE")
+		}
+	}
+
 	return keys
 }
 
@@ -276,6 +283,12 @@ func move_order_hashing(game *chess.Game, moves []*chess.Move, best *chess.Move)
 		keys = append(t, keys...)
 	}
 
+	for _, key := range keys {
+		if key == nil {
+			panic("NIL MOVE")
+		}
+	}
+
 	// fmt.Println(keys)
 	return keys
 }
@@ -294,12 +307,13 @@ func evaluate_move(game *chess.Game, move *chess.Move) (eval int) {
 	move_type := game.Position().Board().Piece(move.S1()).Type()
 
 	if move.HasTag(chess.Capture) {
+		eval += 20
 		eval += PieceValue(game.Position().Board().Piece(move.S2()).Type()) - PieceValue(move_type)
 	}
 
 	from := get_pos_val(move_type, int8(move.S1().File()), int8(move.S1().Rank()), max)
 	to := get_pos_val(move_type, int8(move.S2().File()), int8(move.S2().Rank()), max)
-	eval += to - from
+	eval += to - from / 10
 
 	return
 }

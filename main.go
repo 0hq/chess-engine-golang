@@ -24,14 +24,14 @@ Default Depth
 const flag int = 4
 
 const DO_MOVE_ORDERING bool = true
-
-var DO_ITERATIVE_DEEPENING bool = true
-var TIME_TO_THINK int = 2
+const DO_ITERATIVE_DEEPENING bool = false
+const TIME_TO_THINK int = 2
+const MAX_MOVES = 10000
+const MAX_QUIESCENCE = -10
+const VERBOSE_PRINT = true
 var DEPTH int = 2 // default value without iterative deepening
-var MAX_MOVES = 10000
-var MAX_QUIESCENCE = -10
+const mem_size int = 20 // limits max depth
 
-const mem_size int = 20
 var explored int = 0
 var hash_count int = 0
 var hash_count_list = [3]int{0, 0, 0}
@@ -42,7 +42,9 @@ var engine_color = chess.Black
 
 // rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 // rn1r2k1/ppp3pp/8/2b2b2/4P2q/2P1P3/PP1KQ1BP/RN4NR w - - 0 3
-var start_pos = "1r1r2k1/p4ppp/1bB2q2/5b2/Q7/2P1PN1P/PP3PP1/2KRR3 b - - 0 1"
+// 1r1r2k1/p4ppp/1bB2q2/5b2/Q7/2P1PN1P/PP3PP1/2KRR3 b - - 0 1
+// r1bqkb1r/ppp1ppp1/1Pnp4/4P3/2BP3p/2N2N1P/PP3PP1/R1BQK2R b KQkq - 0 10  // best move is e6, axb6, dxe5 (worse than other 2)
+var start_pos = "r1bq1b1r/1ppkp1p1/1p1p4/3B1Q2/1n1P3p/2N2N1P/PP3PP1/R1B1K2R b KQ - 4 16"
 
 func main() {
 	game := setup()
@@ -71,6 +73,10 @@ func main() {
 			move = stockfish(game, eng)
 		}
 
+		if move == nil {
+			panic("NO MOVE")
+		}
+
 		pre := game.Clone()
 		game.Move(move)
 
@@ -97,6 +103,7 @@ func engine(game *chess.Game) (output *chess.Move) {
 		output = iterative_deepening(game, TIME_TO_THINK)
 	} else {
 		output, _ = minimax_factory(game, 0)
+		print_iter_2()
 	}
 	return
 }
@@ -110,13 +117,12 @@ func iterative_deepening(game *chess.Game, time_control int) (output *chess.Move
 	var total_hash_list [3]int
 	var total_explored_list [mem_size]int
 
-	for time.Now().Sub(delay) < 0 {
+	for time.Now().Sub(delay) < 0 && DEPTH < 3 {
 		print_iter_1(delay)
 		output, _ = minimax_factory(game, 0)
-		DEPTH++
-		print_iter_2(output, 0)
-
+		print_iter_2()
 		deepening_counts(&total_hash, &total_explored, &total_hash_list, &total_explored_list)
+		DEPTH++	
 	}
 	return
 }
@@ -128,13 +134,19 @@ func update_evaluation(game *chess.Game, pre *chess.Game, move *chess.Move) {
 
 // ----- print statements to clean up code ----
 
+func print_root_move_1(move *chess.Move, tempeval int, beta int, history [mem_size]*chess.Move) {
+	fmt.Println("\nNew best root move:", move, )
+	fmt.Println("Evaluation:", tempeval, "Prev eval (forced beta):", beta)
+	fmt.Println("Move path:", history)
+}
+
 func print_iter_1(delay time.Time) {
 	fmt.Println("\n -- Searching deeper --")
 	fmt.Println("Depth:", DEPTH)
 	fmt.Println("Time left:", delay.Sub(time.Now()), "\n")
 }
 
-func print_iter_2(output *chess.Move, eval int) {
+func print_iter_2() {
 	fmt.Println("\nTotal nodes explored", explored)
 	fmt.Println("# nodes at depth", explored_depth)
 	fmt.Println("Total hashes used", hash_count)
@@ -147,6 +159,7 @@ func print_turn_complete(game *chess.Game, move *chess.Move, start time.Time) {
 	fmt.Println(game.Position().Board().Draw())
 	fmt.Println("Time elapsed", end.Sub(start))
 	fmt.Println(game.Position())
+	fmt.Println(game)
 }
 
 func print_game_over(game *chess.Game) {
@@ -203,32 +216,32 @@ func get_pos_val(piece chess.PieceType, x int8, y int8, max bool) int {
 	if max {
 		switch piece {
 		case types[0]:
-			return pos_k[y][x]
+			return pos_k[y][x] / 10 // king pos is disabled
 		case types[1]:
 			return pos_q[y][x]
 		case types[2]:
-			return pos_r[y][x]
+			return pos_r[y][x] / 2
 		case types[3]:
 			return pos_b[y][x]
 		case types[4]:
 			return pos_n[y][x]
 		case types[5]:
-			return pos_p[y][x]
+			return pos_p[y][x] * 2
 		}
 	} else {
 		switch piece {
-		case types[0]:
-			return pos_k[7-y][x]
+		case types[0]: 
+			return pos_k[7-y][x] / 10 // king pos is disabled
 		case types[1]:
 			return pos_q[7-y][x]
 		case types[2]:
-			return pos_r[7-y][x]
+			return pos_r[7-y][x] / 2
 		case types[3]:
 			return pos_b[7-y][x]
 		case types[4]:
 			return pos_n[7-y][x]
 		case types[5]:
-			return pos_p[7-y][x]
+			return pos_p[7-y][x] * 2
 		}
 	}
 
@@ -308,7 +321,7 @@ var pos_q = [8][8]int{
 	{-39, -30, -31, -13, -31, -36, -34, -42},
 }
 var pos_k = [8][8]int{
-	{4, 54, 47, -99, -99, 60, 83, -62},
+	{4, 50, 60, -99, -99, 70, 90, -62},
 	{-32, 10, 55, 56, 56, 55, 10, 3},
 	{-62, 12, -57, 44, -67, 28, 37, -31},
 	{-55, 50, 11, -4, -19, 13, 0, -49},
