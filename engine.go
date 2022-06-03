@@ -27,7 +27,7 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 		return hashbest, hashscore, history
 	}
 
-	if depth < MAX_QUIESCENCE || index_depth >= MAX_DEPTH {
+	if depth <= MAX_QUIESCENCE || index_depth >= MAX_DEPTH {
 		return end_at_edge(game, depth, max, preval)
 	}
 
@@ -55,7 +55,18 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 			return end_at_edge(game, depth, max, preval)
 		} else { // not quiet
 			// fmt.Println(alpha, beta, preval, max)
-			return quiescence_hashing(game, depth, alpha, beta, max, preval, moves)
+			if max {
+				if preval <= alpha {
+					return end_at_edge(game, depth, max, preval)
+				}
+				return quiescence_hashing(game, depth, alpha, preval, max, preval, moves)
+
+			} else {
+				if preval >= beta {
+					return end_at_edge(game, depth, max, preval)
+				}
+				return quiescence_hashing(game, depth, preval, beta, max, preval, moves)
+			}
 		}
 	}
 
@@ -81,9 +92,9 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 	// 	moves = temp // locks to e7e6
 	// }
 	if root {
-		fmt.Println("\nDEPTH:", index_depth)
-		fmt.Println("MOVE ORDER:", moves)
-		fmt.Println("HASH RETURN:", hashbest, hashmoves, flag, hashscore, "\n")
+		fmt.Println("\nDEPTH:", depth)
+		fmt.Println("MOVE ORDER:\n", moves)
+		fmt.Println("HASH RETURN:\n", hashbest, hashmoves, flag, hashscore, "\n")
 	}
 
 	return minimax_hashing_core(game, depth, alpha, beta, max, preval, moves)
@@ -314,12 +325,18 @@ func get_quiescence_moves(game *chess.Game, moves []*chess.Move) []*chess.Move {
 		return false
 	}
 
-	result := make([]*chess.Move, 0, len(moves))
+	evaluated := make(map[*chess.Move]int)
 	for _, move := range moves {
 		if funcVar(move) {
-			result = append(result, move)
+			evaluated[move] = evaluate_quiescence_move(game, move)
 		}
 	}
+
+	result := make([]*chess.Move, 0, len(evaluated))
+	for key := range evaluated {
+		result = append(result, key)
+	}
+	sort.Slice(result, func(i, j int) bool { return evaluated[result[i]] > evaluated[result[j]] })
 
 	return result
 }
@@ -399,4 +416,9 @@ func evaluate_move(game *chess.Game, move *chess.Move) (eval int) {
 	eval += (to - from) / 10
 
 	return
+}
+
+func evaluate_quiescence_move(game *chess.Game, move *chess.Move) int {
+	move_type := game.Position().Board().Piece(move.S1()).Type()
+	return PieceValue(game.Position().Board().Piece(move.S2()).Type()) - PieceValue(move_type)
 }

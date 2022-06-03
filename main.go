@@ -19,19 +19,21 @@ Flag
 Settings:
 Iterative Deepening (sets Default Depth to 1)
 Default Depth
+Opening Book?
+Parralel Search
 
 */
 const flag int = 4
 
 const DO_MOVE_ORDERING bool = true
 const DO_ITERATIVE_DEEPENING bool = true
-const TIME_TO_THINK int = 60
+const TIME_TO_THINK int = 4
 const MAX_MOVES = 1000
-const MAX_QUIESCENCE = 0
+const MAX_QUIESCENCE = -1000
 const VERBOSE_PRINT = true
 
 var DEPTH int = 3       // default value without iterative deepening
-const mem_size int = 40 // limits max depth
+const mem_size int = 18 // limits max depth
 const MAX_DEPTH int = (mem_size - 1) 
 
 var explored int = 0
@@ -52,7 +54,7 @@ var delay time.Time
 // r1bnkb1r/pp6/3ppNp1/4P3/2BP3p/5N1P/PP3PP1/R1BQK2R b KQkq - 0 14"
 // r1b1kbnr/pp2pppp/2P2q2/8/8/2N5/PPP1BPPP/R1BQK1NR b KQkq - 0 8
 // r1b1kbnr/pp2pppp/2n1q3/3P4/8/2N5/PPP1BPPP/R1BQK1NR b KQkq - 0 7
-var start_pos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+var start_pos = "r3kb1r/pb2pppp/5q2/8/8/2N5/PPP1BPPP/R2QK2R b KQkq - 0 8"
 
 func main() {
 	game := setup()
@@ -157,7 +159,7 @@ func print_root_move_1(game *chess.Game, move *chess.Move, tempeval int, cap int
 	fmt.Println("\nNew best root move:", move)
 	fmt.Println("Evaluation:", tempeval, "Prev eval (forced beta/alpha):", cap)
 	fmt.Println("Move path:", history)
-	fmt.Println(game.Position().Board().Draw())
+	// fmt.Println(game.Position().Board().Draw())
 }
 
 func print_iter_1(delay time.Time) {
