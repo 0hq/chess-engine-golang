@@ -42,14 +42,14 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 		return quiescence_hashing(game, depth, alpha, beta, max, preval, moves)
 	}
 
-	root := depth >= DEPTH - 1
+	root := depth == DEPTH
 	if flag == 2 {
 		moves = move_order_hashing(game, moves, hashbest)
 	} else {
 		moves = move_order(game, moves)
 	}
 
-	if (DEPTH == depth) {
+	if (root) {
 		var temp []*chess.Move
 		temp = append(temp, moves[0])
 		moves = temp // locks to e7e6
@@ -76,15 +76,15 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 				if tempeval >= 1000000 {
 					break
 				}
+				if root {
+					print_root_move_1(move, tempeval, alpha, history)
+				}
 			}
 			if tempeval > alpha {
 				alpha = tempeval
 			}
 			if alpha >= beta {
 				break
-			}
-			if root {
-				print_root_move_1(move, tempeval, alpha, history)
 			}
 		}
 	} else {
