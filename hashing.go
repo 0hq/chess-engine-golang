@@ -81,6 +81,14 @@ func read_hash(hash uint64, depth int, alpha int, beta int) (flag int, score int
 					hash_count_list[2]++
 					return 1, p.score, p.best, p.moves
 				}
+				if p.flag == "Q-ALPHA" {
+					hash_count_list[0]++
+					return 5, p.score, p.best, p.moves
+				}
+				if p.flag == "Q-BETA" {
+					hash_count_list[0]++
+					return 5, p.score, p.best, p.moves
+				}
 			}
 			if p.flag == "EDGE" {
 				return 4, int(math.NaN()), nil, nil

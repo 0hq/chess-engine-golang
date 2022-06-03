@@ -25,15 +25,14 @@ const flag int = 4
 
 const DO_MOVE_ORDERING bool = true
 const DO_ITERATIVE_DEEPENING bool = true
-const TIME_TO_THINK int = 20
+const TIME_TO_THINK int = 60
 const MAX_MOVES = 1000
-const MAX_QUIESCENCE = -100
+const MAX_QUIESCENCE = 0
 const VERBOSE_PRINT = true
 
 var DEPTH int = 3       // default value without iterative deepening
 const mem_size int = 40 // limits max depth
-// const MAX_DEPTH int = mem_size
-const MAX_DEPTH int = (mem_size - 1)
+const MAX_DEPTH int = (mem_size - 1) 
 
 var explored int = 0
 var hash_count int = 0
@@ -51,6 +50,8 @@ var delay time.Time
 // r1bqkb1r/ppp1ppp1/1Pnp4/4P3/2BP3p/2N2N1P/PP3PP1/R1BQK2R b KQkq - 0 10  // best move is e6, axb6, dxe5 (worse than other 2)
 // "r1bq1b1r/1ppkp1p1/1p1p4/3B1Q2/1n1P3p/2N2N1P/PP3PP1/R1B1K2R b KQ - 4 16" simple checkmate
 // r1bnkb1r/pp6/3ppNp1/4P3/2BP3p/5N1P/PP3PP1/R1BQK2R b KQkq - 0 14"
+// r1b1kbnr/pp2pppp/2P2q2/8/8/2N5/PPP1BPPP/R1BQK1NR b KQkq - 0 8
+// r1b1kbnr/pp2pppp/2n1q3/3P4/8/2N5/PPP1BPPP/R1BQK1NR b KQkq - 0 7
 var start_pos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 func main() {
@@ -121,21 +122,27 @@ func iterative_deepening(game *chess.Game, time_control int) (output *chess.Move
 	delay = delay.Add(time.Second * time.Duration(time_control))
 	DEPTH = 1 // starting depth
 
-	var total_hash, total_explored int
-	var total_hash_list [3]int
-	var total_explored_list [mem_size]int
+	// var total_hash, total_explored int
+	// var total_hash_list [3]int
+	// var total_explored_list [mem_size]int
 	var eval int
 
 	for time.Now().Sub(delay) < 0 {
 		print_iter_1(delay)
 		output, eval = minimax_factory(game, 0)
 		print_iter_2()
-		deepening_counts(&total_hash, &total_explored, &total_hash_list, &total_explored_list)
+		// deepening_counts(&total_hash, &total_explored, &total_hash_list, &total_explored_list)
 		DEPTH++
 		if eval >= 10000 || eval <= -10000 {
 			break
 		}
 	}
+
+	// fmt.Println("\n\nTotal nodes explored", total_explored)
+	// fmt.Println("# nodes at depth", explored_depth)
+	// fmt.Println("Total hashes used", total_hash)
+	// fmt.Println("Hashes written", eval)
+	// fmt.Println("Hash types (edge, alpha, beta)", total_hash_list)
 	return
 }
 
@@ -146,10 +153,11 @@ func update_evaluation(game *chess.Game, pre *chess.Game, move *chess.Move) {
 
 // ----- print statements to clean up code ----
 
-func print_root_move_1(move *chess.Move, tempeval int, cap int, history [mem_size]*chess.Move) {
+func print_root_move_1(game *chess.Game, move *chess.Move, tempeval int, cap int, history [mem_size]*chess.Move) {
 	fmt.Println("\nNew best root move:", move)
 	fmt.Println("Evaluation:", tempeval, "Prev eval (forced beta/alpha):", cap)
 	fmt.Println("Move path:", history)
+	fmt.Println(game.Position().Board().Draw())
 }
 
 func print_iter_1(delay time.Time) {

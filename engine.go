@@ -39,28 +39,47 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 	}
 
 	var moves []*chess.Move
+	if depth <= 0 { 
+		if flag == 5 {
+			moves = hashmoves
+		} else { 
+			if flag == 2 {
+				moves = hashmoves
+			} else {
+				moves = game.ValidMoves()
+			}
+			moves = get_quiescence_moves(game, moves)
+		}
+
+		if len(moves) == 0 { // if quiet
+			return end_at_edge(game, depth, max, preval)
+		} else { // not quiet
+			// fmt.Println(alpha, beta, preval, max)
+			return quiescence_hashing(game, depth, alpha, beta, max, preval, moves)
+		}
+	}
+
 	if flag == 2 {
 		moves = hashmoves
 	} else {
 		moves = game.ValidMoves()
 	}
 
-	// makes sure we don't run quiescence move pruning on empty
 	if len(moves) == 0 {
 		return end_at_edge(game, depth, max, preval)
 	}
 
-	if depth <= 0 {
-		return quiescence_hashing(game, depth, alpha, beta, max, preval, moves)
-	}
-
-	if flag == 2 {
-		moves = move_order_hashing(game, moves, hashbest)
-	} else {
+	if flag != 2 {
 		moves = move_order(game, moves)
 	}
+	
+	root := index_depth == 0
 
-	root := depth == DEPTH
+	// if root {
+	// 	var temp []*chess.Move
+	// 	temp = append(temp, moves[8])
+	// 	moves = temp // locks to e7e6
+	// }
 	if root {
 		fmt.Println("\nDEPTH:", index_depth)
 		fmt.Println("MOVE ORDER:", moves)
@@ -73,6 +92,7 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 func minimax_hashing_core(game *chess.Game, depth int, alpha int, beta int, max bool, preval int, moves []*chess.Move) (best *chess.Move, eval int, history [mem_size]*chess.Move) {
 	root := depth == DEPTH
 	index_depth := DEPTH - depth
+	move_sorting := make(map[*chess.Move]int)
 
 	if max {
 		eval = -1 * math.MaxInt
@@ -88,20 +108,23 @@ func minimax_hashing_core(game *chess.Game, depth int, alpha int, beta int, max 
 					panic("NOT A NUMBER")
 				}
 			} 
+			move_sorting[move] = tempeval
 			if tempeval > eval {
 				eval = tempeval
 				best = move
 				temphistory[index_depth] = move
 				history = temphistory
 				if root {
-					print_root_move_1(move, tempeval, alpha, history)
-				}
-				if tempeval >= 1000000 {
-					break
+					print_root_move_1(post, move, tempeval, alpha, history)
 				}
 			}
 			if tempeval > alpha {
 				alpha = tempeval
+			}
+			if tempeval >= 1000000 {
+				// fmt.Println("CHECKMATE FOR WHITE")
+				// fmt.Println(post, move, eval, tempeval, alpha, history)
+				break
 			}
 			if alpha >= beta {
 				break
@@ -121,17 +144,16 @@ func minimax_hashing_core(game *chess.Game, depth int, alpha int, beta int, max 
 					panic("NOT A NUMBER")
 				}
 			} 
+			move_sorting[move] = tempeval
 			if tempeval < eval {
 				eval = tempeval
 				best = move
 				temphistory[index_depth] = move
 				history = temphistory
 				if root {
-					print_root_move_1(move, tempeval, beta, history)
+					print_root_move_1(post, move, tempeval, beta, history)
 				}
-				if tempeval <= -1000000 {
-					break
-				}
+				
 			} else {
 				if root {
 					fmt.Print("x")
@@ -140,16 +162,28 @@ func minimax_hashing_core(game *chess.Game, depth int, alpha int, beta int, max 
 			if tempeval < beta {
 				beta = tempeval
 			}
+			if tempeval <= -1000000 {
+				// fmt.Println("CHECKMATE FOR BLACK")
+				// fmt.Println(post, move, eval, tempeval, beta, history)
+				break
+			}
 			if alpha >= beta {
 				break
 			}
 		}
 	}
 
+	m := make([]*chess.Move, 0, len(move_sorting))
+	for move := range move_sorting {
+		m = append(m, move)
+	}
+
 	if max {
-		write_hash(zobrist(game.Position().Board(), max), depth, "ALPHA", alpha, best, moves, game.Position())
+		sort.Slice(m, func(i, j int) bool { return move_sorting[m[i]] > move_sorting[m[j]] })
+		write_hash(zobrist(game.Position().Board(), max), depth, "ALPHA", alpha, best, m, game.Position())
 	} else {
-		write_hash(zobrist(game.Position().Board(), max), depth, "BETA", beta, best, moves, game.Position())
+		sort.Slice(m, func(i, j int) bool { return move_sorting[m[i]] < move_sorting[m[j]] })
+		write_hash(zobrist(game.Position().Board(), max), depth, "BETA", beta, best, m, game.Position())
 	}
 	if root {
 		fmt.Print("\n")
@@ -160,16 +194,9 @@ func minimax_hashing_core(game *chess.Game, depth int, alpha int, beta int, max 
 	return
 }
 
-func quiescence_hashing(game *chess.Game, depth int, alpha int, beta int, max bool, preval int, move_gen []*chess.Move) (best *chess.Move, eval int, history [mem_size]*chess.Move) {
-	moves := get_quiescence_moves(game, move_gen)
-
-	if len(moves) == 0 {
-		write_hash(zobrist(game.Position().Board(), max), depth, "EDGE", preval, nil, nil, game.Position())
-		return nil, preval, history // history is blank here
-	}
-
+func quiescence_hashing(game *chess.Game, depth int, alpha int, beta int, max bool, preval int, moves []*chess.Move) (best *chess.Move, eval int, history [mem_size]*chess.Move) {
 	if max {
-		eval = -1 * math.MaxInt
+		eval = -10
 		for _, move := range moves {
 			post := game.Clone()
 			post.Move(move)
@@ -189,7 +216,7 @@ func quiescence_hashing(game *chess.Game, depth int, alpha int, beta int, max bo
 			}
 		}
 	} else {
-		eval = math.MaxInt
+		eval = 10
 		for _, move := range moves {
 			post := game.Clone()
 			post.Move(move)
@@ -207,8 +234,16 @@ func quiescence_hashing(game *chess.Game, depth int, alpha int, beta int, max bo
 			if alpha >= beta {
 				break
 			}
-
 		}
+	}
+	
+	if max {
+		write_hash(zobrist(game.Position().Board(), max), depth, "Q-ALPHA", alpha, best, moves, game.Position())
+	} else {
+		write_hash(zobrist(game.Position().Board(), max), depth, "Q-BETA", beta, best, moves, game.Position())
+	}
+	if best == nil {
+		return end_at_edge(game, depth, max, preval)
 	}
 	return
 }
@@ -266,13 +301,13 @@ func get_quiescence_moves(game *chess.Game, moves []*chess.Move) []*chess.Move {
 		if move.HasTag(chess.Capture) {
 			return true
 		}
-		if move.HasTag(chess.Check) {
-			post := game.Clone()
-			post.Move(move)
-			if post.Outcome() == chess.WhiteWon || post.Outcome() == chess.BlackWon {
-				return true
-			}
-		}
+		// if move.HasTag(chess.Check) {
+		// 	post := game.Clone()
+		// 	post.Move(move)
+		// 	if post.Outcome() == chess.WhiteWon || post.Outcome() == chess.BlackWon {
+		// 		return true
+		// 	}
+		// }
 		if move.Promo().String() != "" {
 			return true
 		}
@@ -312,6 +347,7 @@ func move_order(game *chess.Game, moves []*chess.Move) []*chess.Move {
 }
 
 func move_order_hashing(game *chess.Game, moves []*chess.Move, best *chess.Move) []*chess.Move {
+	return moves
 	// const len int = len(moves)
 	// fmt.Println(moves)
 	evaluated := make(map[*chess.Move]int)
@@ -349,15 +385,13 @@ func evaluate_move(game *chess.Game, move *chess.Move) (eval int) {
 
 	eval = 0
 	max := game.Position().Turn() == chess.White
-	if move.HasTag(chess.Check) {
-		eval += 1000
-	}
 
 	move_type := game.Position().Board().Piece(move.S1()).Type()
 
 	if move.HasTag(chess.Capture) {
-		eval += 20
 		eval += PieceValue(game.Position().Board().Piece(move.S2()).Type()) - PieceValue(move_type)
+	} else if move.HasTag(chess.Check) {
+		eval += 1000
 	}
 
 	from := get_pos_val(move_type, int8(move.S1().File()), int8(move.S1().Rank()), max)
