@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 
 	"github.com/notnil/chess"
@@ -82,13 +83,13 @@ func read_hash(hash uint64, depth int, alpha int, beta int) (flag int, score int
 				}
 			}
 			if p.flag == "EDGE" {
-				return 4, 0, nil, nil
+				return 4, int(math.NaN()), nil, nil
 			} else {
-				return 2, 0, p.best, p.moves
+				return 2, int(math.NaN()), p.best, p.moves
 			}
 		} else {
 			fmt.Println("HASH CONFLICT", hash, p.hash, p)
 		}
 	}
-	return 3, 0, nil, nil
+	return 3, int(math.NaN()), nil, nil
 }

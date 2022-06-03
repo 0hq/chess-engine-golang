@@ -25,7 +25,7 @@ const flag int = 4
 
 const DO_MOVE_ORDERING bool = true
 const DO_ITERATIVE_DEEPENING bool = true
-const TIME_TO_THINK int = 20
+const TIME_TO_THINK int = 3
 const MAX_MOVES = 3
 const MAX_QUIESCENCE = -100
 const VERBOSE_PRINT = true
@@ -43,6 +43,7 @@ var explored_depth [mem_size]int
 var position_eval = 0
 var move_count = 1
 var engine_color = chess.Black
+var delay time.Time
 
 // rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 // rn1r2k1/ppp3pp/8/2b2b2/4P2q/2P1P3/PP1KQ1BP/RN4NR w - - 0 3
@@ -115,7 +116,7 @@ func engine(game *chess.Game) (output *chess.Move) {
 }
 
 func iterative_deepening(game *chess.Game, time_control int) (output *chess.Move) {
-	delay := time.Now()
+	delay = time.Now()
 	delay = delay.Add(time.Second * time.Duration(time_control))
 	DEPTH = 1 // starting depth
 

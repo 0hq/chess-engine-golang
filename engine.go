@@ -4,14 +4,25 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"time"
 
 	"github.com/notnil/chess"
 )
+
+func check_time_up() bool {
+	return delay.Sub(time.Now()) < 0
+}
 
 func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool, preval int) (best *chess.Move, eval int, history [mem_size]*chess.Move) {
 	index_depth := DEPTH - depth
 	explored++
 	explored_depth[index_depth]++
+
+	if check_time_up() {
+		_, hashscore, hashbest, _ := read_hash(zobrist(game.Position().Board(), max), int(math.Inf(-1)), int(math.Inf(-1)), int(math.Inf(1)))
+		history[index_depth] = hashbest
+		return hashbest, hashscore, history
+	}
 
 	if depth < MAX_QUIESCENCE || index_depth >= MAX_DEPTH {
 		return end_at_edge(game, depth, max, preval)
@@ -67,6 +78,13 @@ func minimax_hashing_core(game *chess.Game, depth int, alpha int, beta int, max 
 			post.Move(move)
 			state_eval := evaluate_position(game, post, preval, move)
 			_, tempeval, temphistory := minimax_hashing(post, depth-1, alpha, beta, !max, state_eval)
+			if tempeval != tempeval {
+				if check_time_up() {
+					continue
+				} else {
+					panic("NOT A NUMBER")
+				}
+			} 
 			if tempeval > eval {
 				eval = tempeval
 				best = move
@@ -93,6 +111,13 @@ func minimax_hashing_core(game *chess.Game, depth int, alpha int, beta int, max 
 			post.Move(move)
 			state_eval := evaluate_position(game, post, preval, move)
 			_, tempeval, temphistory := minimax_hashing(post, depth-1, alpha, beta, !max, state_eval)
+			if tempeval != tempeval {
+				if check_time_up() {
+					continue
+				} else {
+					panic("NOT A NUMBER")
+				}
+			} 
 			if tempeval < eval {
 				eval = tempeval
 				best = move
@@ -100,7 +125,6 @@ func minimax_hashing_core(game *chess.Game, depth int, alpha int, beta int, max 
 				history = temphistory
 				if root {
 					print_root_move_1(move, tempeval, beta, history)
-					fmt.Println(tempeval <= 1000000)
 				}
 				if tempeval <= -1000000 {
 					break
@@ -126,6 +150,9 @@ func minimax_hashing_core(game *chess.Game, depth int, alpha int, beta int, max 
 	}
 	if root {
 		fmt.Print("\n")
+		if check_time_up() {
+			fmt.Println("\n -- Returned early because time was up... -- ")
+		}
 	}
 	return
 }
