@@ -63,7 +63,7 @@ func write_hash(hash uint64, depth int, flag string, score int, best *chess.Move
 	hash_map[hash] = p
 }
 
-func read_hash(hash uint64, depth int, alpha int, beta int) (flag int, score int, best *chess.Move, moves []*chess.Move) {
+func read_hash(hash uint64, depth int, alpha int, beta int) (flag int, score int, best *chess.Move, moves []*chess.Move, depthfound int) {
 	p := hash_map[hash]
 	if p.flag != "" {
 		if p.hash == hash {
@@ -71,33 +71,35 @@ func read_hash(hash uint64, depth int, alpha int, beta int) (flag int, score int
 			if p.depth >= depth {
 				if p.flag == "EDGE" {
 					hash_count_list[0]++
-					return 1, p.score, nil, nil
+					return 1, p.score, nil, nil, p.depth
 				}
 				if p.flag == "ALPHA" && p.score > alpha {
 					hash_count_list[1]++
-					return 1, p.score, p.best, p.moves
+					return 1, p.score, p.best, p.moves, p.depth
 				}
 				if p.flag == "BETA" && p.score < beta {
 					hash_count_list[2]++
-					return 1, p.score, p.best, p.moves
+					return 1, p.score, p.best, p.moves, p.depth
 				}
 				if p.flag == "Q-ALPHA" {
 					hash_count_list[0]++
-					return 5, p.score, p.best, p.moves
+					return 5, p.score, p.best, p.moves, p.depth
 				}
 				if p.flag == "Q-BETA" {
 					hash_count_list[0]++
-					return 5, p.score, p.best, p.moves
+					return 5, p.score, p.best, p.moves, p.depth
 				}
 			}
 			if p.flag == "EDGE" {
-				return 4, int(math.NaN()), nil, nil
+				return 4, int(math.NaN()), nil, nil, p.depth
+			} else if p.flag == "Q-BETA" || p.flag == "Q-ALPHA" {
+				return 6, int(math.NaN()), p.best, p.moves, p.depth
 			} else {
-				return 2, int(math.NaN()), p.best, p.moves
+				return 2, int(math.NaN()), p.best, p.moves, p.depth
 			}
 		} else {
 			fmt.Println("HASH CONFLICT", hash, p.hash, p)
 		}
 	}
-	return 3, int(math.NaN()), nil, nil
+	return 3, int(math.NaN()), nil, nil, 0
 }

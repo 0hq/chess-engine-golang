@@ -27,13 +27,14 @@ const flag int = 4
 
 const DO_MOVE_ORDERING bool = true
 const DO_ITERATIVE_DEEPENING bool = true
-const TIME_TO_THINK int = 4
+const MAX_ITERATIVE_DEPTH int = 12
+const TIME_TO_THINK int = 20
 const MAX_MOVES = 1000
 const MAX_QUIESCENCE = -1000
 const VERBOSE_PRINT = true
 
 var DEPTH int = 3       // default value without iterative deepening
-const mem_size int = 18 // limits max depth
+const mem_size int = 28 // limits max depth
 const MAX_DEPTH int = (mem_size - 1) 
 
 var explored int = 0
@@ -43,7 +44,7 @@ var hash_count_list = [3]int{0, 0, 0}
 var explored_depth [mem_size]int
 var position_eval = 0
 var move_count = 1
-var engine_color = chess.Black
+var engine_color = chess.White
 var delay time.Time
 
 // rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
@@ -54,7 +55,11 @@ var delay time.Time
 // r1bnkb1r/pp6/3ppNp1/4P3/2BP3p/5N1P/PP3PP1/R1BQK2R b KQkq - 0 14"
 // r1b1kbnr/pp2pppp/2P2q2/8/8/2N5/PPP1BPPP/R1BQK1NR b KQkq - 0 8
 // r1b1kbnr/pp2pppp/2n1q3/3P4/8/2N5/PPP1BPPP/R1BQK1NR b KQkq - 0 7
-var start_pos = "r3kb1r/pb2pppp/5q2/8/8/2N5/PPP1BPPP/R2QK2R b KQkq - 0 8"
+// r3kb1r/1b2pppp/p3q3/3N4/8/5B2/PPP2PPP/R2Q1RK1 w kq - 6 12
+// r3kb1r/pb2pppp/5q2/8/8/2N5/PPP1BPPP/R2QK2R b KQkq - 0 8
+// 3k1b1r/4pppp/p1Q5/8/1q6/5B2/PPP2PPP/3R1RK1 b - - 3 1
+// r3kb1r/1b2pppp/pq6/3N4/8/5B2/PPP2PPP/R2Q1RK1 b kq - 5 11
+var start_pos = "r1bqkb1r/ppp1ppp1/1Pnp4/4P3/2BP3p/2N2N1P/PP3PP1/R1BQK2R b KQkq - 0 10"
 
 func main() {
 	game := setup()
@@ -77,7 +82,7 @@ func main() {
 		fmt.Println("\n\n", move_count, "---- New Turn ----", color)
 
 		if color == engine_color {
-			move = engine(game)
+			move = engine(game, engine_color == chess.White)
 		} else {
 			// move = engine(game)
 			// move = random_move_engine(game)
@@ -107,19 +112,19 @@ func setup() *chess.Game {
 	return chess.NewGame(fen)
 }
 
-func engine(game *chess.Game) (output *chess.Move) {
+func engine(game *chess.Game, max bool) (output *chess.Move) {
 	explored = 0
 	init_explored_depth()
 	if DO_ITERATIVE_DEEPENING {
-		output = iterative_deepening(game, TIME_TO_THINK)
+		output = iterative_deepening(game, TIME_TO_THINK, max)
 	} else {
-		output, _ = minimax_factory(game, 0)
+		output, _ = minimax_factory(game, 0, max)
 		print_iter_2()
 	}
 	return
 }
 
-func iterative_deepening(game *chess.Game, time_control int) (output *chess.Move) {
+func iterative_deepening(game *chess.Game, time_control int, max bool) (output *chess.Move) {
 	delay = time.Now()
 	delay = delay.Add(time.Second * time.Duration(time_control))
 	DEPTH = 1 // starting depth
@@ -131,11 +136,11 @@ func iterative_deepening(game *chess.Game, time_control int) (output *chess.Move
 
 	for time.Now().Sub(delay) < 0 {
 		print_iter_1(delay)
-		output, eval = minimax_factory(game, 0)
+		output, eval = minimax_factory(game, 0, max)
 		print_iter_2()
 		// deepening_counts(&total_hash, &total_explored, &total_hash_list, &total_explored_list)
 		DEPTH++
-		if eval >= 10000 || eval <= -10000 {
+		if eval >= 10000 || eval <= -10000 || DEPTH > MAX_ITERATIVE_DEPTH {
 			break
 		}
 	}
@@ -187,22 +192,24 @@ func print_turn_complete(game *chess.Game, move *chess.Move, start time.Time) {
 
 func print_game_over(game *chess.Game) {
 	fmt.Printf("\n\n ----- Game completed. %s by %s. ------\n\n", game.Outcome(), game.Method())
+	fmt.Println(`[SetUp "1"]`)
+	fmt.Print(`[FEN "`,start_pos,`"]`,"\n")
 	fmt.Println(game)
-	fmt.Println("\n", game.Position())
+	
 }
 
 // ------ now entering the doldrums -----
 
-func minimax_factory(game *chess.Game, preval int) (best *chess.Move, eval int) {
+func minimax_factory(game *chess.Game, preval int, max bool) (best *chess.Move, eval int) {
 	if flag == 4 {
-		best, eval, _ = minimax_hashing(game, DEPTH, -math.MaxInt, math.MaxInt, false, preval)
+		best, eval, _ = minimax_hashing(game, DEPTH, -math.MaxInt, math.MaxInt, max, preval)
 		return
 	} else if flag == 3 {
-		return minimax_quiescence(game, DEPTH, -math.MaxInt, math.MaxInt, false, preval)
+		return minimax_quiescence(game, DEPTH, -math.MaxInt, math.MaxInt, max, preval)
 	} else if flag == 2 {
-		return minimax_alpha_beta(game, DEPTH, -math.MaxInt, math.MaxInt, false, preval)
+		return minimax_alpha_beta(game, DEPTH, -math.MaxInt, math.MaxInt, max, preval)
 	} else {
-		return minimax_plain(game, DEPTH, false, preval)
+		return minimax_plain(game, DEPTH, max, preval)
 	}
 }
 
@@ -234,7 +241,10 @@ func deepening_counts(total_hash *int, total_explored *int, total_hash_list *[3]
 }
 
 func get_pos_val(piece chess.PieceType, x int8, y int8, max bool) int {
+	return 0
+
 	types := chess.PieceTypes()
+
 
 	if max {
 		switch piece {
