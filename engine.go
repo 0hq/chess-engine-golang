@@ -21,13 +21,6 @@ Null Window Search (AKA Negascout/PVS)
 
 */
 
-func check_time_up() bool {
-	if !DO_ITERATIVE_DEEPENING {
-		return false
-	}
-	return delay.Sub(time.Now()) < 0
-}
-
 func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool, preval int) (best *chess.Move, eval int, history [mem_size]*chess.Move) {
 	index_depth := DEPTH - depth
 	explored++
@@ -287,6 +280,13 @@ func quiescence_hashing(game *chess.Game, depth int, alpha int, beta int, max bo
 	return
 }
 
+func check_time_up() bool {
+	if !DO_ITERATIVE_DEEPENING {
+		return false
+	}
+	return delay.Sub(time.Now()) < 0
+}
+
 func end_at_edge(game *chess.Game, depth int, max bool, preval int) (best *chess.Move, eval int, history [mem_size]*chess.Move) {
 	write_hash(zobrist(game.Position().Board(), max), depth, "EDGE", preval, nil, nil, game.Position())
 	return nil, preval, history // history is blank
@@ -389,38 +389,6 @@ func move_order(game *chess.Game, moves []*chess.Move) []*chess.Move {
 	}
 
 	return keys
-}
-
-func move_order_hashing(game *chess.Game, moves []*chess.Move, best *chess.Move) []*chess.Move {
-	return moves
-	// // const len int = len(moves)
-	// // fmt.Println(moves)
-	// evaluated := make(map[*chess.Move]int)
-	// for _, move := range moves {
-	// 	evaluated[move] = evaluate_move(game, move)
-	// }
-
-	// keys := make([]*chess.Move, 0, len(evaluated))
-
-	// for key := range evaluated {
-	// 	keys = append(keys, key)
-	// }
-	// sort.Slice(keys, func(i, j int) bool { return evaluated[keys[i]] > evaluated[keys[j]] })
-
-	// if best != nil {
-	// 	var t []*chess.Move
-	// 	t = append(t, best)
-	// 	keys = append(t, keys...)
-	// }
-
-	// for _, key := range keys {
-	// 	if key == nil {
-	// 		panic("NIL MOVE")
-	// 	}
-	// }
-
-	// fmt.Println(keys)
-	// return keys
 }
 
 func evaluate_move(game *chess.Game, move *chess.Move) (eval int) {

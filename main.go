@@ -61,7 +61,7 @@ var delay time.Time
 // r3kb1r/1b2pppp/pq6/3N4/8/5B2/PPP2PPP/R2Q1RK1 b kq - 5 11
 var start_pos = "r1bqkb1r/ppp1ppp1/1Pnp4/4P3/2BP3p/2N2N1P/PP3PP1/R1BQK2R b KQkq - 0 10"
 
-func main() {
+func test() {
 	game := setup()
 
 	// initialize stockfish
