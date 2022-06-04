@@ -28,13 +28,13 @@ const flag int = 4
 const DO_MOVE_ORDERING bool = true
 const DO_ITERATIVE_DEEPENING bool = true
 const MAX_ITERATIVE_DEPTH int = 12
-const TIME_TO_THINK int = 20
-const MAX_MOVES = 1000
+const TIME_TO_THINK int = 120
+const MAX_MOVES = 2
 const MAX_QUIESCENCE = -1000
-const VERBOSE_PRINT = true
+var VERBOSE_PRINT = true
 
 var DEPTH int = 3       // default value without iterative deepening
-const mem_size int = 28 // limits max depth
+const mem_size int = 40 // limits max depth
 const MAX_DEPTH int = (mem_size - 1) 
 
 var explored int = 0
@@ -43,9 +43,9 @@ var hash_write_count int = 0
 var hash_count_list = [3]int{0, 0, 0}
 var explored_depth [mem_size]int
 var position_eval = 0
-var move_count = 1
+var move_count = 1 // just for display
 var engine_color = chess.White
-var delay time.Time
+var delay time.Time 
 
 // rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 // rn1r2k1/ppp3pp/8/2b2b2/4P2q/2P1P3/PP1KQ1BP/RN4NR w - - 0 3
@@ -58,10 +58,12 @@ var delay time.Time
 // r3kb1r/1b2pppp/p3q3/3N4/8/5B2/PPP2PPP/R2Q1RK1 w kq - 6 12
 // r3kb1r/pb2pppp/5q2/8/8/2N5/PPP1BPPP/R2QK2R b KQkq - 0 8
 // 3k1b1r/4pppp/p1Q5/8/1q6/5B2/PPP2PPP/3R1RK1 b - - 3 1
+// 8/1Kn1p3/1p5N/4p1q1/4k1N1/3R2p1/Qn2B3/7R w - - 0 1
 // r3kb1r/1b2pppp/pq6/3N4/8/5B2/PPP2PPP/R2Q1RK1 b kq - 5 11
-var start_pos = "r1bqkb1r/ppp1ppp1/1Pnp4/4P3/2BP3p/2N2N1P/PP3PP1/R1BQK2R b KQkq - 0 10"
+var start_pos = "8/1Kn1p3/1p5N/4p1q1/4k1N1/3R2p1/Qn2B3/7R w - - 0 1"
 
-func test() {
+func main() {
+	run_tests()
 	game := setup()
 
 	// initialize stockfish
@@ -101,6 +103,23 @@ func test() {
 		move_count++
 	}
 	print_game_over(game)
+}
+
+func run_tests() {
+	fmt.Println("\nRunning tests...")
+	VERBOSE_PRINT = false
+	init_explored_depth()
+	init_hash_count()
+	generateZobristConstants()
+	fen, _ := chess.FEN("3qr2k/pbpp2pp/1p5N/3Q2b1/2P1P3/P7/1PP2PPP/R4RK1 w - - 0 1")
+	game := chess.NewGame(fen)
+	move := engine(game, true) 
+	// fmt.Println(move)
+	if move.String() != "d5g8" {
+		panic("TEST FAILED")
+	}
+	VERBOSE_PRINT = true
+	fmt.Println("Tests passed...\n")
 }
 
 func setup() *chess.Game {
@@ -161,6 +180,9 @@ func update_evaluation(game *chess.Game, pre *chess.Game, move *chess.Move) {
 // ----- print statements to clean up code ----
 
 func print_root_move_1(game *chess.Game, move *chess.Move, tempeval int, cap int, history [mem_size]*chess.Move) {
+	if !VERBOSE_PRINT {
+		return
+	}
 	fmt.Println("\nNew best root move:", move)
 	fmt.Println("Evaluation:", tempeval, "Prev eval (forced beta/alpha):", cap)
 	fmt.Println("Move path:", history)
@@ -168,12 +190,18 @@ func print_root_move_1(game *chess.Game, move *chess.Move, tempeval int, cap int
 }
 
 func print_iter_1(delay time.Time) {
+	if !VERBOSE_PRINT {
+		return
+	}
 	fmt.Println("\n -- Searching deeper --")
 	fmt.Println("Depth:", DEPTH)
 	fmt.Println("Time left:", delay.Sub(time.Now()), "\n")
 }
 
 func print_iter_2() {
+	if !VERBOSE_PRINT {
+		return
+	}
 	fmt.Println("\nTotal nodes explored", explored)
 	fmt.Println("# nodes at depth", explored_depth)
 	fmt.Println("Total hashes used", hash_count)
@@ -182,6 +210,9 @@ func print_iter_2() {
 }
 
 func print_turn_complete(game *chess.Game, move *chess.Move, start time.Time) {
+	if !VERBOSE_PRINT {
+		return
+	}
 	fmt.Println("\nMove chosen:", move)
 	end := time.Now()
 	fmt.Println(game.Position().Board().Draw())
@@ -191,6 +222,9 @@ func print_turn_complete(game *chess.Game, move *chess.Move, start time.Time) {
 }
 
 func print_game_over(game *chess.Game) {
+	if !VERBOSE_PRINT {
+		return
+	}
 	fmt.Printf("\n\n ----- Game completed. %s by %s. ------\n\n", game.Outcome(), game.Method())
 	fmt.Println(`[SetUp "1"]`)
 	fmt.Print(`[FEN "`,start_pos,`"]`,"\n")
@@ -202,7 +236,11 @@ func print_game_over(game *chess.Game) {
 
 func minimax_factory(game *chess.Game, preval int, max bool) (best *chess.Move, eval int) {
 	if flag == 4 {
-		best, eval, _ = minimax_hashing(game, DEPTH, -math.MaxInt, math.MaxInt, max, preval)
+		var history [mem_size]*chess.Move
+		best, eval, history = minimax_hashing(game, DEPTH, -math.MaxInt, math.MaxInt, max, preval)
+		if VERBOSE_PRINT {
+			fmt.Println(history)
+		}
 		return
 	} else if flag == 3 {
 		return minimax_quiescence(game, DEPTH, -math.MaxInt, math.MaxInt, max, preval)

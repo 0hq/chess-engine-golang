@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func main() {
+func test() {
 
     c1 := make(chan string)
     c2 := make(chan string)
