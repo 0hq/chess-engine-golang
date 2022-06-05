@@ -27,9 +27,10 @@ const flag int = 4
 
 const DO_MOVE_ORDERING bool = true
 const DO_ITERATIVE_DEEPENING bool = true
-const MAX_ITERATIVE_DEPTH int = 12
-const TIME_TO_THINK int = 120
-const MAX_MOVES = 2
+const DO_STRICT_TIMING bool = false
+const MAX_ITERATIVE_DEPTH int = 200
+const TIME_TO_THINK int = 10
+const MAX_MOVES = 200
 const MAX_QUIESCENCE = -1000
 var VERBOSE_PRINT = true
 
@@ -58,9 +59,15 @@ var delay time.Time
 // r3kb1r/1b2pppp/p3q3/3N4/8/5B2/PPP2PPP/R2Q1RK1 w kq - 6 12
 // r3kb1r/pb2pppp/5q2/8/8/2N5/PPP1BPPP/R2QK2R b KQkq - 0 8
 // 3k1b1r/4pppp/p1Q5/8/1q6/5B2/PPP2PPP/3R1RK1 b - - 3 1
-// 8/1Kn1p3/1p5N/4p1q1/4k1N1/3R2p1/Qn2B3/7R w - - 0 1
-// r3kb1r/1b2pppp/pq6/3N4/8/5B2/PPP2PPP/R2Q1RK1 b kq - 5 11
-var start_pos = "8/1Kn1p3/1p5N/4p1q1/4k1N1/3R2p1/Qn2B3/7R w - - 0 1"
+// 8/1Kn1p3/1p5N/4p1q1/4k1N1/3R2p1/Qn2B3/7R w - - 0 1 // very hard checkmate in 3 
+// r3kb1r/1b2pppp/pq6/3N4/8/5B2/PPP2PPP/R2Q1RK1 b kq - 5 11 
+// r1bqkb1r/ppp1ppp1/1Pnp4/4P3/2BP3p/2N2N1P/PP3PP1/R1BQK2R w KQkq - 0 10 blunder 
+// "r2qkb2/1pp1p1p1/1pn2p2/4pb2/2BP3r/2N2N1P/PP1K1PP1/R2Q3R w q - 0 15" // f3h4 d8d4 c4d3 d4d3
+// quiescence testing good 4k3/5q2/1p6/1Pp5/2Pp4/3Pp3/4P3/1K3R2 w - - 0 1
+// quiescence testing bad 4k3/8/1p6/1Pp5/2Pp4/3Pp3/4P3/1K3Q2 w - - 0 1
+// 3rq1k1/4br1p/2ppb1p1/p5Pn/N3P2P/4Q3/1PP3BB/1K1RR3 w - - 1 22
+// rnbqkbnr/ppp2ppp/8/3pp3/8/6PP/PPPPPP2/RNBQKBNR w KQkq d6 0 3
+var start_pos = "r3kb1r/1b2pppp/p3q3/3N4/8/5B2/PPP2PPP/R2Q1RK1 b kq - 6 12"
 
 func main() {
 	run_tests()
@@ -137,7 +144,9 @@ func engine(game *chess.Game, max bool) (output *chess.Move) {
 	if DO_ITERATIVE_DEEPENING {
 		output = iterative_deepening(game, TIME_TO_THINK, max)
 	} else {
-		output, _ = minimax_factory(game, 0, max)
+		var history [mem_size]string
+		output, _, history = minimax_factory(game, 0, max)
+		fmt.Println(history)
 		print_iter_2()
 	}
 	return
@@ -155,7 +164,11 @@ func iterative_deepening(game *chess.Game, time_control int, max bool) (output *
 
 	for time.Now().Sub(delay) < 0 {
 		print_iter_1(delay)
-		output, eval = minimax_factory(game, 0, max)
+		var history [mem_size]string
+		output, eval, history = minimax_factory(game, 0, max)
+		fmt.Println("\n", output)
+		fmt.Println("line:", history)
+		fmt.Println("evaluation:", eval)
 		print_iter_2()
 		// deepening_counts(&total_hash, &total_explored, &total_hash_list, &total_explored_list)
 		DEPTH++
@@ -179,7 +192,7 @@ func update_evaluation(game *chess.Game, pre *chess.Game, move *chess.Move) {
 
 // ----- print statements to clean up code ----
 
-func print_root_move_1(game *chess.Game, move *chess.Move, tempeval int, cap int, history [mem_size]*chess.Move) {
+func print_root_move_1(game *chess.Game, move *chess.Move, tempeval int, cap int, history [mem_size]string) {
 	if !VERBOSE_PRINT {
 		return
 	}
@@ -217,8 +230,11 @@ func print_turn_complete(game *chess.Game, move *chess.Move, start time.Time) {
 	end := time.Now()
 	fmt.Println(game.Position().Board().Draw())
 	fmt.Println("Time elapsed", end.Sub(start))
-	fmt.Println(game.Position())
+	fmt.Println(`[SetUp "1"]`)
+	fmt.Print(`[FEN "`,start_pos,`"]`,"\n")
 	fmt.Println(game)
+	// fmt.Println(game.Position())
+	// fmt.Println(game)
 }
 
 func print_game_over(game *chess.Game) {
@@ -234,21 +250,17 @@ func print_game_over(game *chess.Game) {
 
 // ------ now entering the doldrums -----
 
-func minimax_factory(game *chess.Game, preval int, max bool) (best *chess.Move, eval int) {
+func minimax_factory(game *chess.Game, preval int, max bool) (best *chess.Move, eval int, history [mem_size]string) {
 	if flag == 4 {
-		var history [mem_size]*chess.Move
-		best, eval, history = minimax_hashing(game, DEPTH, -math.MaxInt, math.MaxInt, max, preval)
-		if VERBOSE_PRINT {
-			fmt.Println(history)
-		}
-		return
+		best, eval, history, _ = minimax_hashing(game, DEPTH, -math.MaxInt, math.MaxInt, max, preval)
 	} else if flag == 3 {
-		return minimax_quiescence(game, DEPTH, -math.MaxInt, math.MaxInt, max, preval)
+		best, eval = minimax_quiescence(game, DEPTH, -math.MaxInt, math.MaxInt, max, preval)
 	} else if flag == 2 {
-		return minimax_alpha_beta(game, DEPTH, -math.MaxInt, math.MaxInt, max, preval)
-	} else {
-		return minimax_plain(game, DEPTH, max, preval)
+		best, eval =  minimax_alpha_beta(game, DEPTH, -math.MaxInt, math.MaxInt, max, preval)
+	} else if flag == 1 {
+		best, eval =  minimax_plain(game, DEPTH, max, preval)
 	}
+	return
 }
 
 func init_explored_depth() {

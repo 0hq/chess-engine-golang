@@ -76,13 +76,13 @@ func zobrist(board *chess.Board, max bool) uint64 {
 		bits = bits ^ whiteToMoveZobrist
 	}
 	for square, piece := range pos {
-		value := pieceSquareZobrist[int(piece.Type())-1][int(square)]
+		value := pieceSquareZobrist[int8(piece)-1][int(square)]
 		bits = bits ^ value
 	}
 	return bits
 }
 
-func write_hash(hash uint64, depth int, flag HashFlag, score int, best *chess.Move, moves []*chess.Move, position *chess.Position) {
+func write_hash(position *chess.Position, hash uint64, depth int, flag HashFlag, score int, best *chess.Move, moves []*chess.Move) {
 	hash_write_count++
 	p := hashed{
 		hash:     hash,
@@ -124,16 +124,16 @@ func read_hash(hash uint64, depth int, alpha int, beta int) (flag HashResult, sc
 				}
 			}
 			// this has no data but make sure it doesn't get sent
-			if p.flag == EdgeFlag {
+			if p.flag == EdgeFlag && true {
 				return NoResult, int(math.NaN()), nil, nil, 0
 			} else if p.flag == BetaQFlag || p.flag == AlphaQFlag {
-				return QuiescenceSavedMoves, int(math.NaN()), p.best, p.moves, p.depth
-			} else {
-				return MinimaxSavedMoves, int(math.NaN()), p.best, p.moves, p.depth
+				return QuiescenceSavedMoves, 0, p.best, p.moves, p.depth
+			} else if p.flag == BetaFlag || p.flag == AlphaFlag {
+				return MinimaxSavedMoves, 0, p.best, p.moves, p.depth
 			}
 		} else {
 			fmt.Println("HASH CONFLICT", hash, p.hash, p)
 		}
 	}
-	return NoResult, int(math.NaN()), nil, nil, 0
+	return NoResult, 0, nil, nil, 0
 }
