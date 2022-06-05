@@ -83,6 +83,9 @@ func zobrist(board *chess.Board, max bool) uint64 {
 }
 
 func write_hash(position *chess.Position, hash uint64, depth int, flag HashFlag, score int, best *chess.Move, moves []*chess.Move) {
+	if check_time_up() {
+		return
+	}
 	hash_write_count++
 	p := hashed{
 		hash:     hash,

@@ -16,6 +16,7 @@ Todo:
 
 Fix evaluation functions, static evals, etc. (this is the worst part)
 X - Investigate remaining insanity (remains)
+En passant and castling broken in zobrist
 Opening Books
 Parralelization
 Null Window Search (AKA Negascout/PVS)
@@ -111,30 +112,9 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 		moves = move_order(game, moves)
 	}
 
-	if len(game.ValidMoves()) != len(moves) {
-		fmt.Println(game.Position().Board().Draw())
-		fmt.Println("\ndepth:", index_depth, depth, game.Position())
-		fmt.Println(game.ValidMoves(), len(game.ValidMoves()))
-		fmt.Println(moves, len(moves), move_order(game, game.ValidMoves()))
-		fmt.Println("\n", flag, hashscore, hashbest, depthfound)
-		fmt.Println(hash_map[zobrist(game.Position().Board(), max)])
-		fmt.Println(hash_map[zobrist(game.Position().Board(), max)].position)
-		panic("AHHHHHH")
-	}
-	
-	// if (depth == 4) {
-	// 	// var mover chess.Move = chess.Move{s1: chess.Square(62), s2: chess.Square(45)}
-	// 	valid := game.ValidMoves()
-	// 	fmt.Println(valid, len(valid))
-	// 	var temp []*chess.Move
-	// 	fmt.Println("select", valid[8])
-	// 	temp = append(temp, valid[8])
-	// 	moves = temp // locks to e7e6
-	// } 
-	
 	root := index_depth == 0
 
-	if root && VERBOSE_PRINT {
+	if root && VERBOSE_FLAG == 2 {
 		fmt.Println("\nDEPTH:", depth, preval)
 		// fmt.Println("MOVE ORDER:\n", moves)
 		fmt.Println("HASH RETURN:\n", depthfound, hashscore, "\n")
@@ -151,133 +131,133 @@ func minimax_hashing_core(game *chess.Game, depth int, alpha int, beta int, max 
 	move_sorting := make(map[*chess.Move]int)
 
 	if max {
-		eval = -1 * math.MaxInt
-		for i, move := range moves {
+		eval = math.MinInt
+		for _, move := range moves {
+
+			// create a new game and simulate the move
 			post := game.Clone()
 			post.Move(move)
+
+			// evaluate the position relatively (take current eval and take difference)
 			state_eval := evaluate_position(game, post, preval, move)
+
+			// search one depth further
 			_, tempeval, temphistory, ignore := minimax_hashing(post, depth-1, alpha, beta, !max, state_eval)
-			move_sorting[move] = tempeval // still save this, since we'll cache this
+
+			// save each move value
+			move_sorting[move] = tempeval 
+
+			// this move wasn't evaluated due to time
 			if ignore {
-				// move_sorting[move] = -10000
 				continue
 			}
+
+			// save if better than previous move
 			if tempeval > eval {
 				eval = tempeval
 				best = move
 				temphistory[index_depth] = move.String()
 				history = temphistory
-				if root {
-					print_root_move_1(post, move, tempeval, alpha, history)
-				}
+				print_root_move_1(root, post, move, tempeval, beta, history)
 			} else {
-				if root {
-					fmt.Print("x")
-				}
+				print_root_move_2(root)
 			}
+
+			// set alpha is better than alpha
 			if tempeval > alpha {
 				alpha = tempeval
 			}
+
+			// checkmate for white
 			if tempeval >= 1000000 {
-				// fmt.Println("CHECKMATE FOR WHITE")
-				// fmt.Println(post, move, eval, tempeval, alpha, history)
-				for _, move := range moves[i:] {
-					move_sorting[move] = -10000
-				}
 				break
 			}
+
+			// there exists a preferrable path elsewhere that is always better for me
 			if alpha >= beta {
-				for _, move := range moves[i:] {
-					move_sorting[move] = -10000
-				}
 				break
 			}
 		}
 	} else {
 		eval = math.MaxInt
-		for i, move := range moves {
+		for _, move := range moves {
+
+			// create a new game and simulate the move
 			post := game.Clone()
 			post.Move(move)
+
+			// evaluate the position relatively (take current eval and take difference)
 			state_eval := evaluate_position(game, post, preval, move)
+
+			// search one depth further
 			_, tempeval, temphistory, ignore := minimax_hashing(post, depth-1, alpha, beta, !max, state_eval)
+
+			// save each move value
 			move_sorting[move] = tempeval
+
+			// this move wasn't evaluated due to time
 			if ignore {
 				continue
 			}
+
+			// save if better than previous move
 			if tempeval < eval {
 				eval = tempeval
 				best = move
 				temphistory[index_depth] = move.String()
 				history = temphistory
-				if root {
-					print_root_move_1(post, move, tempeval, beta, history)
-				}
-				
+				print_root_move_1(root, post, move, tempeval, beta, history)
 			} else {
-				if root {
-					fmt.Print("x")
-				}
+				print_root_move_2(root)
 			}
+			
+			// store the eval of my best move, so far
 			if tempeval < beta {
 				beta = tempeval
 			}
+			
+			// checkmate for black
 			if tempeval <= -1000000 {
-				// fmt.Println("CHECKMATE FOR BLACK")
-				// fmt.Println(post, move, eval, tempeval, beta, history)
-				for _, move := range moves[i:] {
-					move_sorting[move] = 10000
-				}
 				break
 			}
+
+			// there exists a preferrable path elsewhere that will always be better for me
+			// my opponent has an option in this branch that i can't avoid, not looking anymore
 			if alpha >= beta {
-				for _, move := range moves[i:] {
-					move_sorting[move] = 10000
-				}
 				break
 			}
 		}
 	}
 
-	m := make([]*chess.Move, 0, len(move_sorting))
-	for move := range move_sorting {
-		m = append(m, move)
-	}
-
-	if len(m) != len(moves) {
-		fmt.Println(m, moves)
-		panic("WOAH")
-	}
-	
+	// collapse when time is up.
 	if best == nil {
 		return end_at_edge(game, depth, max, preval)
 	}
-	if !check_time_up() {
-		if max {
-			sort.Slice(m, func(i, j int) bool { return move_sorting[m[i]] > move_sorting[m[j]] })
 
-			if len(m) != len(moves) || len(moves) != len(game.ValidMoves()) {
-				fmt.Println(m, moves)
-				panic("WOAH")
-			}
+	flip := 1
+	flag := AlphaFlag
+	m := make([]*chess.Move, 0, len(move_sorting))
+	for move := range move_sorting { // converts map to list for sorting and return
+		m = append(m, move)
+	}
+	if !max {
+		flip = -1
+		flag = BetaFlag
+	}
 
-			write_hash(game.Position(), zobrist(game.Position().Board(), max), depth, AlphaFlag, alpha, best, m)
-		} else {
-			sort.Slice(m, func(i, j int) bool { return move_sorting[m[i]] < move_sorting[m[j]] })
-
-			if len(m) != len(moves) || len(moves) != len(game.ValidMoves()) {
-				fmt.Println(m, moves)
-				panic("WOAH")
-			}
-			
-			write_hash(game.Position(), zobrist(game.Position().Board(), max), depth, BetaFlag, beta, best, m)
+	// if a break ends, keep the uninvestigated moves but move them to end of list
+	if len(m) != len(moves) {
+		for _, move := range moves[len(m)-1:] {
+			move_sorting[move] = flip * -1 * 10000 
 		}
 	}
-	if root {
-		fmt.Print("\n")
-		if check_time_up() {
-			fmt.Println("\n -- Returned early because time was up... -- ")
-		}
-	}
+
+	// sort moves by how good they were
+	sort.Slice(m, func(i, j int) bool { return flip * move_sorting[m[i]] > flip * move_sorting[m[j]] })
+	
+	// save this in the transposition table (ignores if time over)
+	write_hash(game.Position(), zobrist(game.Position().Board(), max), depth, flag, alpha, best, m)
+	print_minmax_root_end(root)
 	return best, eval, history, false
 }
 
@@ -285,22 +265,37 @@ func quiescence_hashing(game *chess.Game, depth int, alpha int, beta int, max bo
 	if max {
 		eval = preval
 		for _, move := range moves {
+
+			// create a new game and simulate the move
 			post := game.Clone()
 			post.Move(move)
+
+			
 			state_eval := evaluate_position(game, post, preval, move)
+
+
 			_, tempeval, temphistory, ignore := minimax_hashing(post, depth-1, alpha, beta, !max, state_eval)
+
+
 			if ignore {
 				continue
 			}
+
+			// checkmate for black
 			if tempeval > eval {
 				eval = tempeval
 				best = move
 				temphistory[DEPTH-depth] = move.String() + "q"
 				history = temphistory
 			}
+
+
 			if tempeval > alpha {
 				alpha = tempeval
 			}
+
+			// there exists a preferrable path elsewhere that will always be better for me
+			// my opponent has an option in this branch that i can't avoid, not looking anymore
 			if alpha >= beta {
 				break
 			}			
@@ -468,3 +463,14 @@ func evaluate_quiescence_move(game *chess.Game, move *chess.Move) int {
 	move_type := game.Position().Board().Piece(move.S1()).Type()
 	return PieceValue(game.Position().Board().Piece(move.S2()).Type()) - PieceValue(move_type)
 }
+
+// if len(game.ValidMoves()) != len(moves) {
+	// 	fmt.Println(game.Position().Board().Draw())
+	// 	fmt.Println("\ndepth:", index_depth, depth, game.Position())
+	// 	fmt.Println(game.ValidMoves(), len(game.ValidMoves()))
+	// 	fmt.Println(moves, len(moves), move_order(game, game.ValidMoves()))
+	// 	fmt.Println("\n", flag, hashscore, hashbest, depthfound)
+	// 	fmt.Println(hash_map[zobrist(game.Position().Board(), max)])
+	// 	fmt.Println(hash_map[zobrist(game.Position().Board(), max)].position)
+	// 	panic("AHHHHHH")
+	// }

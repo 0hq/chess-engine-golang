@@ -21,6 +21,7 @@ Iterative Deepening (sets Default Depth to 1)
 Default Depth
 Opening Book?
 Parralel Search
+Strict Timing still broke
 
 */
 const flag int = 4
@@ -28,11 +29,11 @@ const flag int = 4
 const DO_MOVE_ORDERING bool = true
 const DO_ITERATIVE_DEEPENING bool = true
 const DO_STRICT_TIMING bool = false
-const MAX_ITERATIVE_DEPTH int = 200
-const TIME_TO_THINK int = 10
+const MAX_ITERATIVE_DEPTH int = 3
+const TIME_TO_THINK int = 5
 const MAX_MOVES = 200
 const MAX_QUIESCENCE = -1000
-var VERBOSE_PRINT = true
+var VERBOSE_FLAG = 0
 
 var DEPTH int = 3       // default value without iterative deepening
 const mem_size int = 40 // limits max depth
@@ -67,7 +68,7 @@ var delay time.Time
 // quiescence testing bad 4k3/8/1p6/1Pp5/2Pp4/3Pp3/4P3/1K3Q2 w - - 0 1
 // 3rq1k1/4br1p/2ppb1p1/p5Pn/N3P2P/4Q3/1PP3BB/1K1RR3 w - - 1 22
 // rnbqkbnr/ppp2ppp/8/3pp3/8/6PP/PPPPPP2/RNBQKBNR w KQkq d6 0 3
-var start_pos = "r3kb1r/1b2pppp/p3q3/3N4/8/5B2/PPP2PPP/R2Q1RK1 b kq - 6 12"
+var start_pos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 func main() {
 	run_tests()
@@ -114,7 +115,8 @@ func main() {
 
 func run_tests() {
 	fmt.Println("\nRunning tests...")
-	VERBOSE_PRINT = false
+	stored := VERBOSE_FLAG
+	VERBOSE_FLAG = 0
 	init_explored_depth()
 	init_hash_count()
 	generateZobristConstants()
@@ -125,7 +127,7 @@ func run_tests() {
 	if move.String() != "d5g8" {
 		panic("TEST FAILED")
 	}
-	VERBOSE_PRINT = true
+	VERBOSE_FLAG = stored
 	fmt.Println("Tests passed...\n")
 }
 
@@ -166,11 +168,8 @@ func iterative_deepening(game *chess.Game, time_control int, max bool) (output *
 		print_iter_1(delay)
 		var history [mem_size]string
 		output, eval, history = minimax_factory(game, 0, max)
-		fmt.Println("\n", output)
-		fmt.Println("line:", history)
-		fmt.Println("evaluation:", eval)
+		print_iter_11(output, eval, history)
 		print_iter_2()
-		// deepening_counts(&total_hash, &total_explored, &total_hash_list, &total_explored_list)
 		DEPTH++
 		if eval >= 10000 || eval <= -10000 || DEPTH > MAX_ITERATIVE_DEPTH {
 			break
@@ -192,8 +191,8 @@ func update_evaluation(game *chess.Game, pre *chess.Game, move *chess.Move) {
 
 // ----- print statements to clean up code ----
 
-func print_root_move_1(game *chess.Game, move *chess.Move, tempeval int, cap int, history [mem_size]string) {
-	if !VERBOSE_PRINT {
+func print_root_move_1(root bool, game *chess.Game, move *chess.Move, tempeval int, cap int, history [mem_size]string) {
+	if VERBOSE_FLAG < 2 || !root {
 		return
 	}
 	fmt.Println("\nNew best root move:", move)
@@ -202,8 +201,25 @@ func print_root_move_1(game *chess.Game, move *chess.Move, tempeval int, cap int
 	// fmt.Println(game.Position().Board().Draw())
 }
 
+func print_root_move_2(root bool) {
+	if VERBOSE_FLAG < 2 || !root {
+		return
+	}
+	fmt.Print("x")
+}
+
+func print_minmax_root_end(root bool) {
+	if VERBOSE_FLAG < 2 || root {
+		return
+	}
+	fmt.Print("\n")
+	if check_time_up() {
+		fmt.Println("\n -- Returned early because time was up... -- ")
+	}
+}
+
 func print_iter_1(delay time.Time) {
-	if !VERBOSE_PRINT {
+	if VERBOSE_FLAG < 1 {
 		return
 	}
 	fmt.Println("\n -- Searching deeper --")
@@ -211,10 +227,20 @@ func print_iter_1(delay time.Time) {
 	fmt.Println("Time left:", delay.Sub(time.Now()), "\n")
 }
 
-func print_iter_2() {
-	if !VERBOSE_PRINT {
+func print_iter_11(output *chess.Move, eval int, history [mem_size]string) {
+	if VERBOSE_FLAG < 1 {
 		return
 	}
+	fmt.Println("\n", output)
+	fmt.Println("line:", history)
+	fmt.Println("evaluation:", eval)
+}
+
+func print_iter_2() {
+	if VERBOSE_FLAG < 1 {
+		return
+	}
+	
 	fmt.Println("\nTotal nodes explored", explored)
 	fmt.Println("# nodes at depth", explored_depth)
 	fmt.Println("Total hashes used", hash_count)
@@ -223,9 +249,6 @@ func print_iter_2() {
 }
 
 func print_turn_complete(game *chess.Game, move *chess.Move, start time.Time) {
-	if !VERBOSE_PRINT {
-		return
-	}
 	fmt.Println("\nMove chosen:", move)
 	end := time.Now()
 	fmt.Println(game.Position().Board().Draw())
@@ -238,9 +261,6 @@ func print_turn_complete(game *chess.Game, move *chess.Move, start time.Time) {
 }
 
 func print_game_over(game *chess.Game) {
-	if !VERBOSE_PRINT {
-		return
-	}
 	fmt.Printf("\n\n ----- Game completed. %s by %s. ------\n\n", game.Outcome(), game.Method())
 	fmt.Println(`[SetUp "1"]`)
 	fmt.Print(`[FEN "`,start_pos,`"]`,"\n")
