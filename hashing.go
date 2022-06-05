@@ -26,7 +26,7 @@ const (
 	NoFlag HashFlag = iota
 	// Edge of the search
 	EdgeFlag
-	// Non-edge from a maximizer 
+	// Non-edge from a maximizer
 	AlphaFlag
 	// Non-edge from a minimizer
 	BetaFlag
@@ -49,7 +49,7 @@ const (
 	// Moves saved from previous Minimax search
 	MinimaxSavedMoves
 	// Moves saved from previous quiescence search
-	QuiescenceSavedMoves	
+	QuiescenceSavedMoves
 )
 
 var hash_map = make(map[uint64]hashed)
