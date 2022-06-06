@@ -33,6 +33,7 @@ func main() {
 		if color == engine_color {
 			move = engine(game, engine_color == chess.White)
 		} else {
+			// move = engine(game, engine_color == chess.Black)
 			// move = engine(game)
 			// move = random_move_engine(game)
 			move = stockfish(game, eng)
@@ -52,33 +53,54 @@ func main() {
 	print_game_over(game)
 }
 
-func iterative_deepening(game *chess.Game, time_control int, max bool) (output *chess.Move) {
-	delay = time.Now()
-	delay = delay.Add(time.Second * time.Duration(time_control))
-	DEPTH = 1 // starting depth
+func iterative_deepening_mtdf(game *chess.Game, time_control int, max bool) (output *chess.Move) {
 
-	// var total_hash, total_explored int
-	// var total_hash_list [3]int
-	// var total_explored_list [mem_size]int
-	var eval int
+	DEPTH = 1 // starting depth
+	delay = time.Now().Add(time.Second * time.Duration(time_control))
+	var eval int = 0
+	var history [mem_size]string
 
 	for time.Now().Sub(delay) < 0 {
+		fmt.Println("\n\nnew depth", DEPTH)
+		
 		print_iter_1(delay)
-		var history [mem_size]string
-		output, eval, history = minimax_factory(game, 0, max)
+
+		output, eval, history = mtdf_algo(game, DEPTH, max, eval)
+		
 		print_iter_11(output, eval, history)
 		print_iter_2()
+		
 		DEPTH++
 		if eval >= 10000 || eval <= -10000 || DEPTH > MAX_ITERATIVE_DEPTH {
 			break
 		}
 	}
 
-	// fmt.Println("\n\nTotal nodes explored", total_explored)
-	// fmt.Println("# nodes at depth", explored_depth)
-	// fmt.Println("Total hashes used", total_hash)
-	// fmt.Println("Hashes written", eval)
-	// fmt.Println("Hash types (edge, alpha, beta)", total_hash_list)
+	return
+}
+
+func iterative_deepening(game *chess.Game, time_control int, max bool) (output *chess.Move) {
+
+	DEPTH = 1 // starting depth
+	delay = time.Now().Add(time.Second * time.Duration(time_control))
+	var eval int
+	var history [mem_size]string
+
+	for time.Now().Sub(delay) < 0 {
+		
+		print_iter_1(delay)
+
+		output, eval, history = minimax_factory(game, 0, max)
+		
+		print_iter_11(output, eval, history)
+		print_iter_2()
+		
+		DEPTH++
+		if eval >= 10000 || eval <= -10000 || DEPTH > MAX_ITERATIVE_DEPTH {
+			break
+		}
+	}
+
 	return
 }
 
@@ -92,7 +114,7 @@ func run_tests() {
 	fen, _ := chess.FEN("3qr2k/pbpp2pp/1p5N/3Q2b1/2P1P3/P7/1PP2PPP/R4RK1 w - - 0 1")
 	game := chess.NewGame(fen)
 	move := engine(game, true)
-	// fmt.Println(move)
+	fmt.Println(move)
 	if move.String() != "d5g8" {
 		panic("TEST FAILED")
 	}
@@ -102,6 +124,7 @@ func run_tests() {
 
 func setup() *chess.Game {
 	fmt.Println("\n\nStart game...")
+	opening_moves = true
 	init_explored_depth()
 	init_hash_count()
 	generateZobristConstants()
@@ -110,9 +133,24 @@ func setup() *chess.Game {
 }
 
 func engine(game *chess.Game, max bool) (output *chess.Move) {
+
+	if opening_moves {
+		move := get_opening(game, 0)
+		fmt.Println(move)
+		if move == nil {
+			opening_moves = false
+		} else {
+			return move
+		}
+		// panic("te")
+	}
+
+
 	explored = 0
 	init_explored_depth()
-	if DO_ITERATIVE_DEEPENING {
+	if DO_MTDF {
+		output = iterative_deepening_mtdf(game, TIME_TO_THINK, max)
+	} else if DO_ITERATIVE_DEEPENING {
 		output = iterative_deepening(game, TIME_TO_THINK, max)
 	} else {
 		var history [mem_size]string

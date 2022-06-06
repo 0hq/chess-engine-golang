@@ -27,6 +27,8 @@ func PieceValue(p chess.PieceType) int {
 	return -1
 }
 
+
+// tables taken from https://www.chessprogramming.org/Simplified_Evaluation_Function
 var pos_p = [8][8]int{
 	{0, 0, 0, 0, 0, 0, 0, 0},
 	{50, 50, 50, 50, 50, 50, 50, 50},
@@ -84,7 +86,7 @@ var pos_k = [8][8]int{
 	{-30, -40, -40, -50, -50, -40, -40, -30},
 	{-20, -30, -30, -40, -40, -30, -30, -20},
 	{-10, -20, -20, -20, -20, -20, -20, -10},
-	{20, 20, 0, 0, 0, 0, 20, 20},
+	{20, 20, -10, -10, -10, -10, 20, 20},
 	{20, 30, 10, 0, 0, 10, 30, 20},
 }
 var pos_k_endgame = [8][8]int{
@@ -164,6 +166,11 @@ func evaluate_position(pre *chess.Game, post *chess.Game, preval int, move *ches
 		eval += flip * PieceValue(pre.Position().Board().Piece(move.S2()).Type())
 	}
 
+	move_type := pre.Position().Board().Piece(move.S1()).Type()
+	from := get_pos_val(move_type, int8(move.S1().File()), int8(move.S1().Rank()), max)
+	to := get_pos_val(move_type, int8(move.S2().File()), int8(move.S2().Rank()), max)
+	eval += flip * (to - from)	
+
 	return eval
 }
 
@@ -171,6 +178,13 @@ func get_quiescence_moves(game *chess.Game, moves []*chess.Move) []*chess.Move {
 	funcVar := func(move *chess.Move) bool {
 		if move.HasTag(chess.Capture) {
 			return true
+		}
+		if move.HasTag(chess.Check) {
+			post := game.Clone()
+			post.Move(move)
+			if post.Outcome() == chess.WhiteWon || post.Outcome() == chess.BlackWon {
+				return true
+			}
 		}
 		// perhaps include check moves?
 		if move.Promo() != chess.PieceType(0) {

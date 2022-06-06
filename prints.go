@@ -25,7 +25,7 @@ func print_root_move_2(root bool) {
 }
 
 func print_minmax_root_end(root bool) {
-	if VERBOSE_FLAG < 2 || root {
+	if VERBOSE_FLAG < 2 || !root {
 		return
 	}
 	fmt.Print("\n")
@@ -50,6 +50,7 @@ func print_iter_11(output *chess.Move, eval int, history [mem_size]string) {
 	fmt.Println("\n", output)
 	fmt.Println("line:", history)
 	fmt.Println("evaluation:", eval)
+	fmt.Println("depth:", DEPTH)
 }
 
 func print_iter_2() {

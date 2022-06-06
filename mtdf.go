@@ -5,35 +5,35 @@ import (
 	"math"
 	"sort"
 	"strconv"
-	"time"
 
 	"github.com/notnil/chess"
 )
 
-/*
 
-Todo:
+func mtdf_algo(game *chess.Game, depth int, max bool, guess int) (best *chess.Move, value int, history [mem_size]string) {
+	value = guess
+	upper := math.MaxInt
+	lower := math.MinInt
 
-Opening Books
-Parralelization
-Null Window Search (AKA Negascout/PVS)
+	for lower < upper {
+		fmt.Println("\nMTDF ITERATION", upper, lower)
+		b := Max(value, lower + 1)
+		best, value, history, _ = minimax_hashing_mtdf(game, depth, b-1, b, max, 0)
+		fmt.Println("MTDF", best, value, history)
+		fmt.Println(b, value, upper, lower)
+		if value < b {
+			upper = value
+		} else {
+			lower = value
+		}
+		fmt.Println(value < b, upper, lower)
+	}
 
-Improve evaluation function.
-	Center Control, Isolation, King Safety, Mobility
-Endgames?
-
-To fix:
-	En passant and castling in zobrist
-	Draw detection
-	King endgame table
-	Strict timing is still broken
-
-*/
-
-var nullMove chess.Move = chess.Move{}
+	return best, value, history
+}
 
 
-func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool, preval int) (best *chess.Move, eval int, history [mem_size]string, ignore bool) {
+func minimax_hashing_mtdf(game *chess.Game, depth int, alpha int, beta int, max bool, preval int) (best *chess.Move, eval int, history [mem_size]string, ignore bool) {
 	index_depth := DEPTH - depth
 	explored++
 	explored_depth[index_depth]++
@@ -102,7 +102,7 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 		if len(moves) == 0 { // if quiet
 			return end_at_edge(game, depth, max, preval)
 		} else { // not quiet
-			return quiescence_hashing(game, depth, alpha, beta, max, preval, moves)
+			return quiescence_hashing_mtdf(game, depth, alpha, beta, max, preval, moves)
 		}
 	}
 
@@ -130,10 +130,10 @@ func minimax_hashing(game *chess.Game, depth int, alpha int, beta int, max bool,
 		// fmt.Println(hash_map[zobrist(game.Position().Board(), max)])
 	}
 
-	return minimax_hashing_core(game, depth, alpha, beta, max, preval, moves)
+	return minimax_hashing_core_mtdf(game, depth, alpha, beta, max, preval, moves)
 }
 
-func minimax_hashing_core(game *chess.Game, depth int, alpha int, beta int, max bool, preval int, moves []*chess.Move) (best *chess.Move, eval int, history [mem_size]string, ignore bool) {
+func minimax_hashing_core_mtdf(game *chess.Game, depth int, alpha int, beta int, max bool, preval int, moves []*chess.Move) (best *chess.Move, eval int, history [mem_size]string, ignore bool) {
 	root := depth == DEPTH
 	index_depth := DEPTH - depth
 	move_sorting := make(map[*chess.Move]int)
@@ -150,7 +150,7 @@ func minimax_hashing_core(game *chess.Game, depth int, alpha int, beta int, max 
 			state_eval := evaluate_position(game, post, preval, move)
 
 			// search one depth further
-			_, tempeval, temphistory, ignore := minimax_hashing(post, depth-1, alpha, beta, !max, state_eval)
+			_, tempeval, temphistory, ignore := minimax_hashing_mtdf(post, depth-1, alpha, beta, !max, state_eval)
 
 			// save each move value
 			move_sorting[move] = tempeval
@@ -199,7 +199,7 @@ func minimax_hashing_core(game *chess.Game, depth int, alpha int, beta int, max 
 			state_eval := evaluate_position(game, post, preval, move)
 
 			// search one depth further
-			_, tempeval, temphistory, ignore := minimax_hashing(post, depth-1, alpha, beta, !max, state_eval)
+			_, tempeval, temphistory, ignore := minimax_hashing_mtdf(post, depth-1, alpha, beta, !max, state_eval)
 
 			// save each move value
 			move_sorting[move] = tempeval
@@ -272,7 +272,7 @@ func minimax_hashing_core(game *chess.Game, depth int, alpha int, beta int, max 
 	return best, eval, history, false
 }
 
-func quiescence_hashing(game *chess.Game, depth int, alpha int, beta int, max bool, preval int, moves []*chess.Move) (best *chess.Move, eval int, history [mem_size]string, ignore bool) {
+func quiescence_hashing_mtdf(game *chess.Game, depth int, alpha int, beta int, max bool, preval int, moves []*chess.Move) (best *chess.Move, eval int, history [mem_size]string, ignore bool) {
 	if max {
 		eval = preval
 		for _, move := range moves {
@@ -283,7 +283,7 @@ func quiescence_hashing(game *chess.Game, depth int, alpha int, beta int, max bo
 
 			state_eval := evaluate_position(game, post, preval, move)
 
-			_, tempeval, temphistory, ignore := minimax_hashing(post, depth-1, alpha, beta, !max, state_eval)
+			_, tempeval, temphistory, ignore := minimax_hashing_mtdf(post, depth-1, alpha, beta, !max, state_eval)
 
 			if ignore {
 				continue
@@ -313,7 +313,7 @@ func quiescence_hashing(game *chess.Game, depth int, alpha int, beta int, max bo
 			post := game.Clone()
 			post.Move(move)
 			state_eval := evaluate_position(game, post, preval, move)
-			_, tempeval, temphistory, ignore := minimax_hashing(post, depth-1, alpha, beta, !max, state_eval)
+			_, tempeval, temphistory, ignore := minimax_hashing_mtdf(post, depth-1, alpha, beta, !max, state_eval)
 			if ignore {
 				continue
 			}
@@ -344,23 +344,3 @@ func quiescence_hashing(game *chess.Game, depth int, alpha int, beta int, max bo
 	}
 	return best, eval, history, false
 }
-
-func check_time_up() bool {
-	if !DO_ITERATIVE_DEEPENING || !DO_STRICT_TIMING {
-		return false
-	}
-	return delay.Sub(time.Now()) < 0
-}
-
-func end_at_edge(game *chess.Game, depth int, max bool, preval int) (best *chess.Move, eval int, history [mem_size]string, ignore bool) {
-	if check_time_up() {
-		history[DEPTH-depth] = "null"
-		return nil, 0, history, true
-	}
-	history[DEPTH-depth] = "edge"
-	write_hash(game.Position(), zobrist(game.Position().Board(), max), depth, EdgeFlag, preval, nil, nil)
-	return nil, preval, history, false // history is blank
-}
-
-// -------------------------
-
