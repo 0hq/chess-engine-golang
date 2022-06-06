@@ -14,7 +14,7 @@ import (
 
 Todo:
 
-Opening Books
+Fix Hashing and Strict Timing
 Parralelization
 Null Window Search (AKA Negascout/PVS)
 

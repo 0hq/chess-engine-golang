@@ -179,13 +179,13 @@ func get_quiescence_moves(game *chess.Game, moves []*chess.Move) []*chess.Move {
 		if move.HasTag(chess.Capture) {
 			return true
 		}
-		if move.HasTag(chess.Check) {
-			post := game.Clone()
-			post.Move(move)
-			if post.Outcome() == chess.WhiteWon || post.Outcome() == chess.BlackWon {
-				return true
-			}
-		}
+		// if move.HasTag(chess.Check) {
+		// 	post := game.Clone()
+		// 	post.Move(move)
+		// 	if post.Outcome() == chess.WhiteWon || post.Outcome() == chess.BlackWon {
+		// 		return true
+		// 	}
+		// }
 		// perhaps include check moves?
 		if move.Promo() != chess.PieceType(0) {
 			return true

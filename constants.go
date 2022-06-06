@@ -29,7 +29,7 @@ const DO_MOVE_ORDERING bool = true
 const DO_ITERATIVE_DEEPENING bool = true
 const DO_STRICT_TIMING bool = false
 const MAX_ITERATIVE_DEPTH int = 12
-const TIME_TO_THINK int = 200
+const TIME_TO_THINK int = 3
 const MAX_MOVES = 200
 const MAX_QUIESCENCE = -1000
 
